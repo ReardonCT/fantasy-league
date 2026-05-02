@@ -1,0 +1,2296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>The League</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --hdr:#111110;--ht:#f0eeea;
+  --bg:#e8e7e4;--sf:#ffffff;
+  --bd:rgba(0,0,0,0.07);--bd2:rgba(0,0,0,0.14);
+  --tx:#111110;--t2:#6b6b67;--t3:#b0aeab;
+  --green:#16a34a;--gbg:#f0fdf4;
+  --red:#dc2626;--rbg:#fef2f2;
+  --blue:#2563eb;--bbg:#eff6ff;
+  --amber:#d97706;--abg:#fffbeb;
+  --orange:#ea580c;--obg:#fff7ed;
+  --purple:#7c3aed;--pbg:#f5f3ff;
+  --r:10px;--rl:14px;
+  --shadow:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
+  --shadow-md:0 4px 14px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+/* Header */
+.hdr{background:var(--hdr);color:var(--ht);position:sticky;top:0;z-index:100;border-bottom:1px solid rgba(255,255,255,.06)}
+.hdr-i{max-width:1140px;margin:0 auto;padding:0 1.25rem;height:54px;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.ltitle{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.lsub{font-size:11px;opacity:.5;margin-top:1px}
+.nav{display:flex;gap:1px}
+.ntab{background:none;border:none;color:var(--ht);opacity:.55;font-size:12px;font-weight:600;padding:5px 10px;cursor:pointer;border-radius:6px;font-family:inherit;letter-spacing:.01em;height:auto;white-space:nowrap}
+.ntab:hover{opacity:.85;background:rgba(255,255,255,.07)}
+.ntab.on{opacity:1;background:rgba(255,255,255,.12)}
+/* Season bar */
+.szn-bar{background:rgba(255,255,255,.05);border-top:1px solid rgba(255,255,255,.06)}
+.szn-i{max-width:1140px;margin:0 auto;padding:0 1.25rem;height:34px;display:flex;align-items:center;gap:4px;overflow-x:auto}
+.szntab{background:none;border:none;color:var(--ht);opacity:.45;font-size:11px;font-weight:700;padding:3px 10px;cursor:pointer;border-radius:4px;font-family:inherit;white-space:nowrap;height:auto}
+.szntab:hover{opacity:.7}
+.szntab.on{opacity:1;background:rgba(255,255,255,.15)}
+.szntab.loading{opacity:.4}
+/* Mobile nav */
+.mnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--hdr);border-top:1px solid rgba(255,255,255,.08);z-index:100;padding-bottom:env(safe-area-inset-bottom,0)}
+.mnav-r{display:flex;height:52px}
+.mnb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;color:var(--ht);opacity:.45;font-size:9px;font-weight:700;letter-spacing:.03em;cursor:pointer;font-family:inherit;text-transform:uppercase}
+.mnb .ico{font-size:16px;line-height:1}
+.mnb.on{opacity:1}
+/* Layout */
+.pg{max-width:1140px;margin:0 auto;padding:1.25rem;display:grid;grid-template-columns:1fr 360px;gap:1.1rem;align-items:start}
+.pg.wide{grid-template-columns:1fr}
+/* Cards */
+.card{background:var(--sf);border-radius:var(--rl);border:.5px solid var(--bd);box-shadow:var(--shadow)}
+.cp{padding:1.25rem 1.5rem}
+/* Event cards */
+.ec{background:var(--sf);border-radius:var(--rl);border:.5px solid var(--bd);border-left:4px solid transparent;padding:1rem 1.1rem;margin-bottom:.6rem;box-shadow:var(--shadow);transition:box-shadow .15s}
+.ec:hover{box-shadow:var(--shadow-md)}
+.ec.amber{border-left-color:#f59e0b}
+.ec.green{border-left-color:#22c55e}
+.ec.blue{border-left-color:#3b82f6}
+.ec.red{border-left-color:#ef4444}
+.ec.orange{border-left-color:#f97316}
+.ec.purple{border-left-color:#8b5cf6}
+.ec.gray{border-left-color:#d1d5db}
+.ec-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.3rem}
+.ec-badge{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 9px;border-radius:20px}
+.ec-wk{font-size:11px;color:var(--t3)}
+.ec-title{font-size:15px;font-weight:800;line-height:1.35;margin-bottom:.2rem;letter-spacing:-.01em}
+.ec-body{font-size:12px;color:var(--t2);line-height:1.5}
+.ec-chips{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.45rem}
+.chip{font-size:11px;padding:3px 9px;border-radius:20px;background:#ededeb;color:var(--t2);font-weight:600}
+.wkdiv{display:flex;align-items:center;gap:.65rem;margin:1.1rem 0 .65rem;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)}
+.wkdiv::after{content:'';flex:1;height:1px;background:var(--bd)}
+/* Streak pills */
+.sbar{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.9rem}
+.spill{display:flex;align-items:center;gap:.35rem;font-size:11px;font-weight:600;padding:5px 10px;border-radius:20px;box-shadow:var(--shadow)}
+/* Sidebar */
+.sdbar-wrap{position:sticky;top:90px;align-self:start;max-height:calc(100vh - 100px);overflow-y:auto;scrollbar-width:none}
+.sdbar-wrap::-webkit-scrollbar{display:none}
+.rk-hdr{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:.7rem}
+.rk-row{display:flex;align-items:center;gap:.45rem;padding:5px 0;border-bottom:.5px solid var(--bd)}
+.rk-row:last-child{border-bottom:none}
+/* Loading */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;gap:.75rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{border:3px solid #e0deda;border-top-color:var(--hdr);border-radius:50%;animation:spin .75s linear infinite;flex-shrink:0}
+.prog{width:180px;height:3px;background:#e0deda;border-radius:2px;overflow:hidden}
+.prog-f{height:100%;background:var(--hdr);border-radius:2px;transition:width .3s}
+/* Avatar */
+.av{border-radius:50%;background:#e0deda;display:flex;align-items:center;justify-content:center;font-weight:700;color:#888;overflow:hidden;flex-shrink:0}
+/* Standings */
+.srow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:.5px solid var(--bd)}
+.srow:last-child{border-bottom:none}
+/* Draft */
+.draftw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:5px 8px;border-bottom:.5px solid var(--bd);font-size:11px}
+th{font-weight:700;color:var(--t3);font-size:10px;text-transform:uppercase;letter-spacing:.04em;background:var(--sf)}
+/* Form elements */
+input.inp,input.inpp{background:#f5f3ef;border:.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;padding:7px 10px;height:34px;outline:none;font-family:inherit}
+input.inp{width:100%}
+input.inpp{flex:1}
+button.btn{background:none;border:.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-family:inherit;padding:5px 12px;height:34px;cursor:pointer;white-space:nowrap}
+button.btn:hover:not(:disabled){background:#f0eeea}
+button.btn:disabled{opacity:.4;cursor:not-allowed}
+button.btn.dk{background:var(--hdr);color:var(--ht);border-color:var(--hdr)}
+/* Week bar */
+.wkbar{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.wkbtn{padding:1px 7px;font-size:11px;height:auto;white-space:nowrap}
+/* Power ranking cards */
+.rkcard{border-radius:var(--rl);border:.5px solid var(--bd);background:var(--sf);margin-bottom:.65rem;overflow:hidden;display:flex;align-items:stretch;box-shadow:var(--shadow);transition:box-shadow .15s}
+.rkcard:hover{box-shadow:var(--shadow-md)}
+.rkcard-accent{width:6px;flex-shrink:0}
+.rkcard-body{flex:1;padding:1rem 1.25rem}
+.rkcard-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.rk-badge{width:38px;height:38px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0}
+.rkcard-stats{display:flex;gap:20px;flex-wrap:wrap}
+.rkstat{display:flex;flex-direction:column;gap:1px}
+.rkstat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--t3)}
+.rkstat-val{font-size:16px;font-weight:800}
+.top3-row{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:8px}
+.top3-pill{font-size:11px;padding:2px 8px;border-radius:20px;background:#f0eeea;color:var(--t2);font-weight:500}
+/* Draft team cards */
+.draft-team-card{background:var(--sf);border-radius:var(--rl);border:.5px solid var(--bd);padding:1rem 1.25rem;margin-bottom:.65rem;box-shadow:var(--shadow)}
+.draft-team-hdr{display:flex;align-items:center;gap:10px;margin-bottom:.75rem;padding-bottom:.65rem;border-bottom:.5px solid var(--bd)}
+.draft-pick-row{display:flex;gap:8px;padding:5px 4px;border-bottom:.5px solid var(--bd);border-radius:4px}
+.draft-pick-row:last-child{border-bottom:none}
+.draft-rnd{font-size:10px;font-weight:800;color:var(--t3);width:30px;flex-shrink:0;margin-top:2px;text-transform:uppercase;letter-spacing:.02em}
+/* Ruler */
+.ruler-wrap{margin-bottom:1.25rem}
+/* League banner */
+.lg-banner{background:linear-gradient(135deg,#1a0800 0%,#2d1200 45%,#0a1a00 100%);border-bottom:3px solid #f59e0b;padding:2rem 1.5rem;text-align:center;position:relative;overflow:hidden;margin-bottom:0}
+.lg-banner::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 120%,rgba(245,158,11,.15) 0%,transparent 70%);pointer-events:none}
+.lg-banner-main{font-size:clamp(22px,4vw,38px);font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1.1;text-transform:uppercase;position:relative}
+/* Team feed */
+.team-grid{display:flex;flex-direction:column;gap:8px;margin-top:1rem}
+.team-card{background:var(--sf);border-radius:var(--rl);border:.5px solid var(--bd);box-shadow:var(--shadow);padding:.9rem 1.25rem;cursor:pointer;transition:box-shadow .15s,transform .15s;display:flex;align-items:center;gap:14px}
+.team-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.result-card{border-radius:var(--rl);border:.5px solid var(--bd);overflow:hidden;margin-bottom:8px;box-shadow:var(--shadow)}
+/* Storyline card */
+.storyline-card{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);border-radius:var(--rl);border:.5px solid #312e81;box-shadow:0 4px 16px rgba(99,102,241,.2);padding:1.1rem 1.25rem;margin-bottom:.65rem}
+.storyline-badge{font-size:10px;fontWeight:800;text-transform:uppercase;letter-spacing:.07em;color:#a5b4fc;margin-bottom:.5rem}
+/* News box */
+.news-item{padding:8px 0;border-bottom:.5px solid var(--bd);cursor:pointer}
+.news-item:last-child{border-bottom:none}
+.news-item:hover .news-title{color:var(--blue)}
+.news-title{font-size:12px;font-weight:700;line-height:1.4;color:var(--tx);transition:color .12s}
+.news-time{font-size:10px;color:var(--t3);margin-top:2px}
+/* History tab */
+.hist-table{width:100%;border-collapse:collapse;margin-top:.5rem}
+.hist-table th{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);padding:6px 10px;border-bottom:1px solid var(--bd);text-align:left;background:var(--bg)}
+.hist-table td{font-size:13px;padding:9px 10px;border-bottom:.5px solid var(--bd)}
+.hist-table tr:last-child td{border-bottom:none}
+.hist-table tr:hover td{background:var(--bg)}
+/* Responsive */
+@media(max-width:760px){
+  .pg{grid-template-columns:1fr;padding:.9rem}
+  .sdbar-wrap{display:none}
+  .mnav{display:block}
+  body{padding-bottom:56px}
+  .hdr-i{padding:0 1rem}
+  .nav{display:none}
+  .rkcard-stats{gap:14px}
+
+  /* 1. Mobile nav — scrollable, all tabs visible */
+  .mnav-r{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;justify-content:flex-start;padding:0 4px}
+  .mnav-r::-webkit-scrollbar{display:none}
+  .mnb{min-width:60px;flex:0 0 60px;font-size:8px;padding:0 2px}
+  .mnb .ico{font-size:15px}
+
+  /* 2. Trade sides — stack vertically */
+  .trade-sides{flex-direction:column!important}
+  .trade-sides>div{border-right:none!important;border-bottom:.5px solid var(--bd)}
+  .trade-sides>div:last-child{border-bottom:none}
+
+  /* 3. History table — hide low-priority columns */
+  .hist-table th:nth-child(7),.hist-table th:nth-child(8),.hist-table th:nth-child(9),
+  .hist-table td:nth-child(7),.hist-table td:nth-child(8),.hist-table td:nth-child(9){display:none}
+  .hist-table th,.hist-table td{padding:6px 6px;font-size:11px}
+
+  /* 4. Banner — tighter text on small screens */
+  .lg-banner{padding:1.25rem 1rem}
+  .lg-banner-main{font-size:20px;word-break:break-word}
+
+  /* 5. Draft pick header — wrap gracefully */
+  .dpc-hdr{flex-wrap:wrap;gap:4px 6px}
+  .dpc-hdr-pick{font-size:10px}
+  .dpc-hdr-body{font-size:12px}
+}
+@media(min-width:761px){.mnav{display:none}}
+</style>
+<!-- Firebase SDK — shared poll votes across all visitors -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useMemo}=React;
+const BASE='https://api.sleeper.app/v1';
+const LEAGUE_ID='1334357712166727680';
+const get=url=>fetch(url).then(r=>r.json());
+const fmtTs=ts=>ts?new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+
+// ── Configuration ─────────────────────────────────────────────────────────────
+// Step 1: Fill in your Firebase config (from Firebase Console → Project Settings)
+const FIREBASE_CONFIG={
+  apiKey:'AIzaSyDH8tvgCSdx_DThs5UAj2rnWSHs6yIiy1g',
+  databaseURL:'https://epns-317e6-default-rtdb.firebaseio.com',
+  projectId:'epns-317e6',
+};
+// Step 2: Paste your Cloudflare Worker URL here after deploying worker.js
+const WORKER_URL='https://sleeper-players-cache.11inches.workers.dev';
+
+// ── League tagline ────────────────────────────────────────────────────────────
+// Shown in the big banner at the top of the Feed page
+const LEAGUE_TAGLINE='Home of 10 Men, 11 Inches';
+// Subtitle shown below the season label on the main feed. Change anytime.
+const LEAGUE_MESSAGE='Happy Draft Week, Inchers!';
+
+// ── Draft pick annotations ────────────────────────────────────────────────────
+// Add RAS scores and expert analysis per player here.
+// Key is the Sleeper player_id. To find an id, open the console on your site
+// and run: fetch(WORKER_URL).then(r=>r.json()).then(d=>console.log(Object.entries(d).find(([id,p])=>p.last_name==='Bell'&&p.first_name==='Chris')))
+const DRAFT_CONFIG={
+  // Example:
+  // '4046':{ras:'9.13',analysis:'Elite dual-threat quarterback with elite arm strength and mobility.'},
+};
+
+// ── Draft pick timestamps ─────────────────────────────────────────────────────
+// Picks listed here use these exact Unix ms timestamps.
+// Any pick NOT listed is handled automatically using Sleeper's last_picked anchor.
+// Going forward from pick 18+ you never need to add to this.
+//
+// Reference: chat captured ~May 2 2026 2:00 PM PDT = 21:00 UTC = 1746219600000
+//   "a day ago"     = May 1  2:00 PM PDT = 21:00 UTC
+//   "6 hours ago"   = May 2  8:00 AM PDT = 15:00 UTC  (draft resumed)
+//   "2 hours ago"   = May 2 12:00 PM PDT = 19:00 UTC
+//   "27 minutes ago"= May 2  1:33 PM PDT = 20:33 UTC
+const DRAFT_TIMESTAMPS={
+  // Round 1 — all "a day ago", spread ~30 min apart from 2pm PDT May 1
+  1: 1746133200000,  // 1.1  Jeremiyah Love       May 1  2:00 PM PDT
+  2: 1746135000000,  // 1.2  Carnell Tate          May 1  2:30 PM PDT
+  3: 1746136800000,  // 1.3  Makai Lemon           May 1  3:00 PM PDT
+  4: 1746138600000,  // 1.4  Jordyn Tyson          May 1  3:30 PM PDT
+  5: 1746140400000,  // 1.5  Jadarian Price        May 1  4:00 PM PDT
+  6: 1746142200000,  // 1.6  Fernando Mendoza      May 1  4:30 PM PDT
+  7: 1746144000000,  // 1.7  KC Concepcion         May 1  5:00 PM PDT
+  8: 1746145800000,  // 1.8  Kenyon Sadiq          May 1  5:30 PM PDT
+  9: 1746147600000,  // 1.9  Eli Stowers           May 1  6:00 PM PDT
+  10:1746149400000,  // 1.10 Omar Cooper           May 1  6:30 PM PDT
+  // Round 2 picks 11-12 still "a day ago"
+  11:1746151200000,  // 2.1  Chris Bell            May 1  7:00 PM PDT
+  12:1746153000000,  // 2.2  De'Zhaun Stribling    May 1  7:30 PM PDT
+  // Draft paused overnight — resumed "6 hours ago" (8am PDT May 2)
+  13:1746212400000,  // 2.3  Denzel Boston         May 2 12:00 PM PDT
+  14:1746214200000,  // 2.4  Ty Simpson            May 2 12:30 PM PDT
+  15:1746216000000,  // 2.5  Skyler Bell           May 2  1:00 PM PDT
+  16:1746217800000,  // 2.6  Nicholas Singleton    May 2  1:30 PM PDT
+  17:1746217980000,  // 2.7  Elijah Sarratt        May 2  1:33 PM PDT
+  // Pick 18 onward → automatic, no entry needed
+};
+
+// ── Firebase init ─────────────────────────────────────────────────────────────
+let _db=null;
+(()=>{
+  try{
+    if(FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.apiKey!=='YOUR_API_KEY'){
+      firebase.initializeApp(FIREBASE_CONFIG);
+      _db=firebase.database();
+      console.log('Firebase connected ✓');
+    }
+  }catch(e){console.warn('Firebase init failed:',e);}
+})();
+
+const Av=({avatar,name,size=28})=>{
+  const [e,setE]=useState(false);const s=size+'px';const fs=Math.floor(size*.37)+'px';
+  return<div className="av" style={{width:s,height:s,fontSize:fs}}>{avatar&&!e?<img src={`https://sleepercdn.com/avatars/thumbs/${avatar}`} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setE(true)}/>:(name||'?').slice(0,2).toUpperCase()}</div>;
+};
+const Spin=({s=18})=><div className="spin" style={{width:s,height:s}}/>;
+
+// Rank → smooth green/yellow/red gradient
+const rankColor=(rank,total)=>{
+  const n=Math.max(total-1,1);
+  const t=Math.min(1,Math.max(0,(rank-1)/n));
+  const lerp=(a,b,u)=>Math.round(a+(b-a)*u);
+  const G=[34,197,94],Y=[234,179,8],R=[239,68,68];
+  let cr,cg,cb;
+  if(t<=0.5){const u=t*2;cr=lerp(G[0],Y[0],u);cg=lerp(G[1],Y[1],u);cb=lerp(G[2],Y[2],u);}
+  else{const u=(t-0.5)*2;cr=lerp(Y[0],R[0],u);cg=lerp(Y[1],R[1],u);cb=lerp(Y[2],R[2],u);}
+  return`rgb(${cr},${cg},${cb})`;
+};
+
+const ET={
+  trade:{c:'purple',badge:'Trade 💼',bg:'#f5f3ff',tc:'#7c3aed'},
+  waiver:{c:'amber',badge:'Waiver 📋',bg:'#fffbeb',tc:'#d97706'},
+  free_agent:{c:'green',badge:'Free Agent ✍️',bg:'#f0fdf4',tc:'#16a34a'},
+  king:{c:'amber',badge:'King of the Week 👑',bg:'#fffbeb',tc:'#d97706'},
+  goat:{c:'red',badge:'The GOAT 💀',bg:'#fef2f2',tc:'#dc2626'},
+  lucky:{c:'green',badge:'Lucky Win 🍀',bg:'#f0fdf4',tc:'#16a34a'},
+  unlucky:{c:'orange',badge:'Unlucky Loss 😤',bg:'#fff7ed',tc:'#ea580c'},
+  blowout:{c:'red',badge:'Blowout 💥',bg:'#fef2f2',tc:'#dc2626'},
+  close:{c:'blue',badge:'Nail-biter ⚡',bg:'#eff6ff',tc:'#2563eb'},
+  hot_streak:{c:'orange',badge:'Win Streak 🔥',bg:'#fff7ed',tc:'#ea580c'},
+  cold_streak:{c:'blue',badge:'Losing Streak ❄️',bg:'#eff6ff',tc:'#2563eb'},
+  scr_hot:{c:'orange',badge:'Scoring Hot 📈',bg:'#fff7ed',tc:'#ea580c'},
+  scr_cold:{c:'blue',badge:'Scoring Cold 📉',bg:'#eff6ff',tc:'#2563eb'},
+  draft_round:{c:'blue',badge:'Draft 🎯',bg:'#eff6ff',tc:'#2563eb'},
+};
+
+// Position-based color palette
+const posColor={
+  QB:{bg:'#7f1d1d',accent:'#ef4444',light:'#fef2f2',text:'#dc2626'},
+  RB:{bg:'#14532d',accent:'#22c55e',light:'#f0fdf4',text:'#16a34a'},
+  WR:{bg:'#1e3a5f',accent:'#3b82f6',light:'#eff6ff',text:'#2563eb'},
+  TE:{bg:'#431407',accent:'#f97316',light:'#fff7ed',text:'#ea580c'},
+  K: {bg:'#3b0764',accent:'#a855f7',light:'#fdf4ff',text:'#7c3aed'},
+  DEF:{bg:'#1c1917',accent:'#78716c',light:'#fafaf9',text:'#57534e'},
+  default:{bg:'#1e293b',accent:'#64748b',light:'#f8fafc',text:'#475569'},
+};
+const pc=pos=>posColor[pos]||posColor.default;
+
+// ── Draft Pick Poll ──────────────────────────────────────
+const GRADES=['A','B','C','D','F'];
+const GRADE_COLOR={A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#f97316',F:'#ef4444'};
+
+const DraftPoll=({playerId,readOnly=false})=>{
+  const [votes,setVotes]=useState(null);
+  const [myVote,setMyVote]=useState(null);
+  const fbPath=`/polls3/${playerId}`;
+  const lsKey=`poll_v3_${playerId}`;
+  const myKey=`my_vote_v3_${playerId}`;
+
+  useEffect(()=>{
+    let cancelled=false;
+    const load=async()=>{
+      // My vote is always local (prevents double-voting) — skip in readOnly
+      if(!readOnly){
+        try{const mv=localStorage.getItem(myKey);if(mv&&!cancelled)setMyVote(mv);}catch{}
+      }
+      let loaded=false;
+
+      // 1. Firebase — truly shared across all visitors
+      if(_db){
+        try{
+          const snap=await _db.ref(fbPath).get();
+          if(!cancelled){
+            setVotes(snap.exists()?snap.val():{A:0,B:0,C:0,D:0,F:0});
+            loaded=true;
+          }
+        }catch(e){console.warn('Firebase read:',e);}
+      }
+
+      // 2. Claude artifact storage — shared within Claude.ai
+      if(!loaded){
+        try{
+          const res=await window.storage.get(lsKey,true);
+          if(!cancelled&&res?.value){setVotes(JSON.parse(res.value));loaded=true;}
+        }catch{}
+      }
+
+      // 3. localStorage — per-browser fallback
+      if(!loaded&&!cancelled){
+        try{
+          const local=localStorage.getItem(lsKey);
+          setVotes(local?JSON.parse(local):{A:0,B:0,C:0,D:0,F:0});
+        }catch{setVotes({A:0,B:0,C:0,D:0,F:0});}
+      }
+    };
+    load();
+    return()=>{cancelled=true;};
+  },[]);
+
+  const castVote=async(grade)=>{
+    if(myVote||!votes)return;
+    const next={...votes,[grade]:(votes[grade]||0)+1};
+    setVotes(next);setMyVote(grade);
+    // Always record this browser's choice locally
+    try{localStorage.setItem(myKey,grade);}catch{}
+
+    // 1. Firebase
+    if(_db){
+      try{await _db.ref(fbPath).set(next);return;}
+      catch(e){console.warn('Firebase write:',e);}
+    }
+    // 2. Claude artifact storage
+    try{await window.storage.set(lsKey,JSON.stringify(next),true);return;}catch{}
+    // 3. localStorage
+    try{localStorage.setItem(lsKey,JSON.stringify(next));}catch{}
+  };
+
+  if(votes===null)return(
+    <div style={{borderTop:'1px solid rgba(255,255,255,.08)',marginTop:8,paddingTop:8,textAlign:'center'}}>
+      <div style={{fontSize:9,color:'rgba(255,255,255,.25)'}}>Loading poll…</div>
+    </div>
+  );
+
+  const total=Object.values(votes).reduce((a,b)=>a+b,0);
+
+  return(
+    <div style={{borderTop:'1px solid rgba(255,255,255,.1)',marginTop:8,paddingTop:8}}>
+      <div style={{fontSize:9,fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'rgba(255,255,255,.45)',marginBottom:6}}>
+        Draft Pick Grade:
+      </div>
+      {(!myVote&&!readOnly)?(
+        // Voting buttons
+        <div style={{display:'flex',gap:3}}>
+          {GRADES.map(g=>(
+            <button key={g} onClick={()=>castVote(g)} style={{
+              flex:1,padding:'5px 0',border:'none',borderRadius:6,
+              background:'rgba(255,255,255,.1)',color:'rgba(255,255,255,.8)',
+              fontSize:11,fontWeight:800,cursor:'pointer',
+              transition:'background .12s, transform .1s',fontFamily:'inherit',
+            }}
+            onMouseEnter={e=>{e.currentTarget.style.background=GRADE_COLOR[g];e.currentTarget.style.color='#fff';}}
+            onMouseLeave={e=>{e.currentTarget.style.background='rgba(255,255,255,.1)';e.currentTarget.style.color='rgba(255,255,255,.8)';}}
+            >{g}</button>
+          ))}
+        </div>
+      ):(
+        // Results
+        <div>
+          {GRADES.map(g=>{
+            const cnt=votes[g]||0;
+            const pct=total>0?Math.round(cnt/total*100):0;
+            const isMine=!readOnly&&g===myVote;
+            return(
+              <div key={g} style={{display:'flex',alignItems:'center',gap:5,marginBottom:4}}>
+                <span style={{
+                  width:14,height:14,borderRadius:3,
+                  background:isMine?GRADE_COLOR[g]:'rgba(255,255,255,.1)',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  flexShrink:0,fontSize:8,fontWeight:800,
+                  color:isMine?'#fff':'rgba(255,255,255,.4)',
+                  outline:isMine?`2px solid ${GRADE_COLOR[g]}`:'none',
+                  outlineOffset:1,
+                }}>{g}</span>
+                <div style={{flex:1,background:'rgba(255,255,255,.08)',borderRadius:3,height:5,overflow:'hidden'}}>
+                  <div style={{
+                    width:pct+'%',height:'100%',borderRadius:3,
+                    background:isMine?GRADE_COLOR[g]:GRADE_COLOR[g]+'88',
+                    transition:'width .5s cubic-bezier(.4,0,.2,1)',
+                  }}/>
+                </div>
+                <span style={{fontSize:9,color:'rgba(255,255,255,.4)',width:22,textAlign:'right',fontWeight:600}}>{pct}%</span>
+              </div>
+            );
+          })}
+          <div style={{fontSize:9,color:'rgba(255,255,255,.25)',marginTop:3}}>
+            {total} vote{total!==1?'s':''}
+            {!readOnly&&myVote&&<span> · your grade: <span style={{color:GRADE_COLOR[myVote],fontWeight:800}}>{myVote}</span></span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Cascading player photo — tries Sleeper thumb → Sleeper full → ESPN → styled initials
+const PlayerPhoto=({playerId,espnId,name,pos,size=80,bg='#1e293b',accent='#64748b',style:extraStyle={}})=>{
+  const [tried,setTried]=useState(0);
+  const urls=[
+    playerId&&`https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg`,
+    playerId&&`https://sleepercdn.com/content/nfl/players/${playerId}.jpg`,
+    espnId&&`https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/${espnId}.png&h=200&w=200`,
+  ].filter(Boolean);
+  if(!urls.length||tried>=urls.length){
+    const sz=typeof size==='number'?size:44;
+    const parts=(name||'?').trim().split(/\s+/);
+    const initials=parts.length>=2
+      ?parts[0].charAt(0).toUpperCase()+parts[parts.length-1].charAt(0).toUpperCase()
+      :parts[0].charAt(0).toUpperCase();
+    const initFontSize=Math.floor(sz*(initials.length>1?.32:.38))+'px';
+    return(
+      <div style={{
+        width:size,height:size,
+        background:`linear-gradient(145deg,${accent}55 0%,${bg} 100%)`,
+        display:'flex',alignItems:'center',justifyContent:'center',
+        flexShrink:0,...extraStyle,
+      }}>
+        <span style={{fontSize:initFontSize,fontWeight:800,color:'rgba(255,255,255,.9)',lineHeight:1,letterSpacing:'-.01em'}}>
+          {initials}
+        </span>
+      </div>
+    );
+  }
+  return(
+    <img src={urls[tried]} alt={name} onError={()=>setTried(t=>t+1)}
+      style={{width:size,height:size,objectFit:'cover',objectPosition:'top center',display:'block',
+        background:`linear-gradient(145deg,${accent}33 0%,${bg} 100%)`,flexShrink:0,...extraStyle}}/>
+  );
+};
+
+// Draft section — full-width horizontal cards stacked vertically, newest pick first
+const DraftSection=({ev,currentRosterOf,readOnly=false})=>{
+  const picks=ev.picks||[];
+  if(!picks.length)return null;
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+      {picks.map((pick,i)=>{
+        const col=pc(pick.pos);
+        const config=DRAFT_CONFIG[pick.player_id]||{};
+        const currentTeam=currentRosterOf?.(pick.player_id);
+        const traded=currentTeam&&currentTeam!==pick.teamName;
+        return(
+          <div key={i} style={{background:'var(--sf)',borderRadius:'var(--rl)',border:'.5px solid var(--bd)',boxShadow:'var(--shadow-md)',overflow:'hidden'}}>
+
+            {/* ── Header ── */}
+            <div className="dpc-hdr" style={{padding:'11px 16px',background:'#111110',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+              <span className="dpc-hdr-pick" style={{fontSize:11,fontWeight:800,padding:'2px 9px',borderRadius:20,background:col.accent+'22',color:col.accent,letterSpacing:'.04em',flexShrink:0}}>
+                Pick {pick.pickLabel}
+              </span>
+              <span className="dpc-hdr-body" style={{fontSize:13,color:'rgba(240,238,234,.55)',fontWeight:500}}>
+                <span style={{color:'rgba(240,238,234,.8)',fontWeight:700}}>{pick.teamName}</span>
+                {' selects '}
+                <span style={{color:'#fff',fontWeight:800}}>{pick.name}</span>
+              </span>
+            </div>
+
+            {/* ── Player info ── */}
+            <div style={{display:'flex',gap:16,padding:'16px',borderBottom:'.5px solid var(--bd)'}}>
+              <PlayerPhoto playerId={pick.player_id} espnId={pick.espn_id} name={pick.name} pos={pick.pos}
+                size={96} bg={col.bg} accent={col.accent}
+                style={{borderRadius:12,flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:20,fontWeight:800,letterSpacing:'-.03em',marginBottom:5}}>{pick.name}</div>
+                <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10,alignItems:'center'}}>
+                  <span style={{fontSize:11,fontWeight:800,padding:'2px 9px',borderRadius:20,background:col.accent+'22',color:col.accent}}>{pick.pos||'—'}</span>
+                  {pick.nflTeam&&<span style={{fontSize:12,color:'var(--t2)',fontWeight:600}}>{pick.nflTeam}</span>}
+                  {traded&&<span style={{fontSize:11,color:'var(--blue)',fontWeight:700,padding:'2px 8px',borderRadius:20,background:'var(--bbg)'}}>→ {currentTeam}</span>}
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 20px'}}>
+                  <div>
+                    <div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.05em',color:'var(--t3)',marginBottom:1}}>College</div>
+                    <div style={{fontSize:13,fontWeight:600,color:'var(--tx)'}}>{pick.college||'—'}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.05em',color:'var(--t3)',marginBottom:1}}>RAS Score</div>
+                    <div style={{fontSize:13,fontWeight:600,color:config.ras?'var(--tx)':'var(--t3)'}}>{config.ras||'—'}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.05em',color:'var(--t3)',marginBottom:1}}>Height</div>
+                    <div style={{fontSize:13,fontWeight:600,color:'var(--tx)'}}>{pick.height?`${Math.floor(pick.height/12)}'${pick.height%12}"`:'—'}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.05em',color:'var(--t3)',marginBottom:1}}>Weight</div>
+                    <div style={{fontSize:13,fontWeight:600,color:'var(--tx)'}}>{pick.weight?`${pick.weight} lbs`:'—'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Expert Analysis ── */}
+            <div style={{padding:'13px 16px',borderBottom:'.5px solid var(--bd)',background:'#fafaf9'}}>
+              <div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--t3)',marginBottom:6}}>📝 Expert Analysis</div>
+              {config.analysis
+                ?<div style={{fontSize:13,lineHeight:1.7,color:'var(--t2)'}}>{config.analysis}</div>
+                :<div style={{fontSize:12,color:'var(--t3)',fontStyle:'italic'}}>Analysis coming soon.</div>
+              }
+            </div>
+
+            {/* ── Poll ── */}
+            {pick.player_id&&(
+              <div style={{padding:'12px 16px',background:col.bg}}>
+                <DraftPoll playerId={pick.player_id} readOnly={readOnly}/>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Rich inline trade card for the feed
+const TradeFeedCard=({ev,players})=>{
+  const sides=ev.tradeSides||[];
+  const pName=pid=>players?.[pid]?`${players[pid].first_name||''} ${players[pid].last_name||''}`.trim():'…';
+  const pPos=pid=>players?.[pid]?.position||'';
+  const pTeam=pid=>players?.[pid]?.team||'';
+  const pEspn=pid=>players?.[pid]?.espn_id||null;
+  return(
+    <div style={{borderRadius:'var(--rl)',border:'.5px solid #b91c1c',boxShadow:'0 4px 18px rgba(185,28,28,.18)',overflow:'hidden',marginBottom:'.75rem'}}>
+      {/* TRADE ALERT header */}
+      <div style={{background:'linear-gradient(135deg,#7f1d1d 0%,#b91c1c 60%,#dc2626 100%)',padding:'13px 16px',position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',right:-10,top:-10,fontSize:80,opacity:.07,lineHeight:1}}>💼</div>
+        <div style={{fontSize:26,fontWeight:900,color:'#fff',letterSpacing:'-.02em',lineHeight:1,textTransform:'uppercase'}}>⚡ Trade Alert!</div>
+        <div style={{fontSize:12,color:'rgba(255,255,255,.65)',marginTop:4,fontWeight:600}}>{ev.title}</div>
+        <div style={{fontSize:11,color:'rgba(255,255,255,.45)',marginTop:2}}>{ev.wkLabel}</div>
+      </div>
+      {/* Trade sides */}
+      {sides.length>0&&(
+        <div className="trade-sides" style={{display:'flex',background:'var(--sf)'}}>
+          {sides.map((side,si)=>(
+            <div key={si} style={{flex:1,padding:'12px 14px',borderRight:si<sides.length-1?'.5px solid var(--bd)':'none'}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:10,paddingBottom:8,borderBottom:'.5px solid var(--bd)'}}>
+                <Av avatar={side.av} name={side.name} size={22}/>
+                <span style={{fontSize:12,fontWeight:800,color:'var(--tx)'}}>{side.name} <span style={{color:'var(--red)',fontWeight:900}}>gets</span></span>
+              </div>
+              {side.playerIds.map(pid=>{
+                const col=pc(pPos(pid));
+                return(
+                  <div key={pid} style={{display:'flex',alignItems:'center',gap:7,marginBottom:6}}>
+                    <PlayerPhoto playerId={pid} espnId={pEspn(pid)} name={pName(pid)} pos={pPos(pid)}
+                      size={34} bg={col.bg} accent={col.accent} style={{borderRadius:8,flexShrink:0}}/>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{pName(pid)}</div>
+                      {pPos(pid)&&<div style={{fontSize:10,color:'var(--t3)'}}>{pPos(pid)}{pTeam(pid)?` · ${pTeam(pid)}`:''}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+              {side.picks.map((p,pi)=>(
+                <div key={pi} style={{display:'flex',alignItems:'center',gap:8,marginBottom:5}}>
+                  <div style={{width:34,height:34,borderRadius:8,background:'#eff6ff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <span style={{fontSize:15}}>📋</span>
+                  </div>
+                  <div style={{fontSize:12,fontWeight:700,color:'var(--blue)'}}>{p}</div>
+                </div>
+              ))}
+              {side.playerIds.length===0&&side.picks.length===0&&(
+                <div style={{fontSize:11,color:'var(--t3)',fontStyle:'italic'}}>Nothing</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Single draft pick feed card — same layout as DraftSection but standalone
+const DraftPickFeedCard=({pick,currentRosterOf,readOnly=false})=>{
+  const col=pc(pick.pos);
+  const config=DRAFT_CONFIG[pick.player_id]||{};
+  const currentTeam=currentRosterOf?.(pick.player_id);
+  const traded=currentTeam&&currentTeam!==pick.teamName;
+  return(
+    <div style={{background:'var(--sf)',borderRadius:'var(--rl)',border:'.5px solid var(--bd)',boxShadow:'var(--shadow-md)',overflow:'hidden',marginBottom:'.75rem'}}>
+      <div className="dpc-hdr" style={{padding:'11px 16px',background:'#111110',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        <span className="dpc-hdr-pick" style={{fontSize:11,fontWeight:800,padding:'2px 9px',borderRadius:20,background:col.accent+'22',color:col.accent,letterSpacing:'.04em',flexShrink:0}}>Pick {pick.pickLabel}</span>
+        <span className="dpc-hdr-body" style={{fontSize:13,color:'rgba(240,238,234,.55)',fontWeight:500}}>
+          <span style={{color:'rgba(240,238,234,.8)',fontWeight:700}}>{pick.teamName}</span>{' selects '}
+          <span style={{color:'#fff',fontWeight:800}}>{pick.name}</span>
+        </span>
+      </div>
+      <div style={{display:'flex',gap:16,padding:'16px',borderBottom:'.5px solid var(--bd)'}}>
+        <PlayerPhoto playerId={pick.player_id} espnId={pick.espn_id} name={pick.name} pos={pick.pos}
+          size={96} bg={col.bg} accent={col.accent} style={{borderRadius:12,flexShrink:0}}/>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:20,fontWeight:800,letterSpacing:'-.03em',marginBottom:5}}>{pick.name}</div>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10,alignItems:'center'}}>
+            <span style={{fontSize:11,fontWeight:800,padding:'2px 9px',borderRadius:20,background:col.accent+'22',color:col.accent}}>{pick.pos||'—'}</span>
+            {pick.nflTeam&&<span style={{fontSize:12,color:'var(--t2)',fontWeight:600}}>{pick.nflTeam}</span>}
+            {traded&&<span style={{fontSize:11,color:'var(--blue)',fontWeight:700,padding:'2px 8px',borderRadius:20,background:'var(--bbg)'}}>→ {currentTeam}</span>}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 20px'}}>
+            {[['College',pick.college||'—'],['RAS Score',config.ras||'—'],['Height',pick.height?`${Math.floor(pick.height/12)}'${pick.height%12}"`:'—'],['Weight',pick.weight?`${pick.weight} lbs`:'—']].map(([lbl,val])=>(
+              <div key={lbl}>
+                <div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.05em',color:'var(--t3)',marginBottom:1}}>{lbl}</div>
+                <div style={{fontSize:13,fontWeight:600,color:'var(--tx)'}}>{val}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div style={{padding:'13px 16px',borderBottom:'.5px solid var(--bd)',background:'#fafaf9'}}>
+        <div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--t3)',marginBottom:6}}>📝 Expert Analysis</div>
+        {config.analysis?<div style={{fontSize:13,lineHeight:1.7,color:'var(--t2)'}}>{config.analysis}</div>:<div style={{fontSize:12,color:'var(--t3)',fontStyle:'italic'}}>Analysis coming soon.</div>}
+      </div>
+      {pick.player_id&&<div style={{padding:'12px 16px',background:col.bg}}><DraftPoll playerId={pick.player_id} readOnly={readOnly}/></div>}
+    </div>
+  );
+};
+
+// Season/week start announcement banner
+const AnnouncementCard=({ev})=>(
+  <div style={{background:'linear-gradient(135deg,var(--hdr) 0%,#1e3a5f 100%)',borderRadius:'var(--rl)',padding:'1.25rem 1.5rem',marginBottom:'.75rem',textAlign:'center',border:'.5px solid rgba(255,255,255,.1)',boxShadow:'0 4px 16px rgba(0,0,0,.15)'}}>
+    <div style={{fontSize:28,marginBottom:6}}>🏈</div>
+    <div style={{fontSize:20,fontWeight:900,color:'#fff',letterSpacing:'-.02em'}}>{ev.title}</div>
+    {ev.body&&<div style={{fontSize:13,color:'rgba(255,255,255,.5)',marginTop:4}}>{ev.body}</div>}
+  </div>
+);
+
+const ECard=({ev,players})=>{
+  const s=ET[ev.type]||{c:'gray',badge:ev.type,bg:'#f0eeea',tc:'#888'};
+  return(
+    <div className={`ec ${s.c}`} style={{background:`linear-gradient(to right, ${s.bg}88, var(--sf) 18%)`}}>
+      <div className="ec-top">
+        <span className="ec-badge" style={{background:s.tc,color:'#fff'}}>{s.badge}</span>
+        <span className="ec-wk">{ev.wkLabel}</span>
+      </div>
+      <div className="ec-title">{ev.title}</div>
+      {ev.body&&<div className="ec-body">{ev.body}</div>}
+      {ev.playerIds?.length>0&&(
+        <div style={{display:'flex',gap:4,marginTop:8,flexWrap:'wrap'}}>
+          {ev.playerIds.map(pid=>(
+            <PlayerPhoto key={pid} playerId={pid}
+              name={players?.[pid]?`${players[pid].first_name||''} ${players[pid].last_name||''}`.trim():pid}
+              pos={players?.[pid]?.position||''}
+              size={34} bg='#1e293b' accent='#64748b'
+              style={{borderRadius:'50%',border:`2px solid ${s.tc}44`,flexShrink:0}}/>
+          ))}
+        </div>
+      )}
+      {ev.chips?.length>0&&<div className="ec-chips">{ev.chips.map((c,i)=><span key={i} className="chip" style={{background:s.bg,color:s.tc}}>{c}</span>)}</div>}
+    </div>
+  );
+};
+
+// ── Storyline Card ────────────────────────────────────────
+// Auto-generates an AI narrative for a key league moment, caches in Firebase.
+const StorylineCard=({storyKey,title,prompt})=>{
+  const [story,setStory]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const fbRef=`/storylines/${LEAGUE_ID}/${storyKey}`;
+
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      // 1. Try Firebase cache
+      if(_db){
+        try{
+          const snap=await _db.ref(fbRef).get();
+          if(!cancelled&&snap.exists()){setStory(snap.val());setLoading(false);return;}
+        }catch{}
+      }
+      // 2. Try to generate with saved API key
+      const apiK=localStorage.getItem('ff_k')||'';
+      if(!apiK){if(!cancelled)setLoading(false);return;}
+      try{
+        const res=await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':apiK,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:prompt}]})
+        });
+        const dd=await res.json();
+        if(dd.error)throw new Error(dd.error.message);
+        const text=dd.content?.map(c=>c.text||'').join('')||'';
+        if(!cancelled&&text){
+          setStory(text);
+          if(_db)try{await _db.ref(fbRef).set(text);}catch{}
+        }
+      }catch{}
+      if(!cancelled)setLoading(false);
+    })();
+    return()=>{cancelled=true;};
+  },[storyKey]);
+
+  return(
+    <div className="storyline-card">
+      <div className="storyline-badge">📖 {title}</div>
+      {loading?(
+        <div style={{display:'flex',alignItems:'center',gap:8,color:'rgba(165,180,252,.5)',fontSize:12}}>
+          <Spin s={14}/> Generating storyline…
+        </div>
+      ):story?(
+        <div style={{fontSize:13,lineHeight:1.75,color:'rgba(224,231,255,.85)',fontStyle:'italic'}}>"{story}"</div>
+      ):(
+        <div style={{fontSize:12,color:'rgba(165,180,252,.4)'}}>
+          Add your Anthropic API key in the Newsletter tab to auto-generate storylines.
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── News Box ──────────────────────────────────────────────
+const NewsBox=()=>{
+  const [news,setNews]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [err,setErr]=useState('');
+  useEffect(()=>{
+    if(!WORKER_URL){setLoading(false);setErr('No worker URL configured.');return;}
+    fetch(`${WORKER_URL}/news`)
+      .then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();})
+      .then(data=>{
+        if(data.error)throw new Error(data.error);
+        setNews(Array.isArray(data)?data.slice(0,6):[]);
+        setLoading(false);
+      })
+      .catch(e=>{setErr(e.message);setLoading(false);});
+  },[]);
+  return(
+    <div className="card sdbar" style={{padding:'1rem 1.25rem',marginTop:'1rem'}}>
+      <div style={{fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'.07em',color:'var(--t3)',marginBottom:'.75rem'}}>📰 NFL Headlines</div>
+      {loading&&<div style={{display:'flex',gap:8,alignItems:'center',color:'var(--t3)',fontSize:12}}><Spin s={14}/>Loading…</div>}
+      {!loading&&err&&<div style={{fontSize:11,color:'var(--red)'}}>{err}</div>}
+      {!loading&&!err&&news.length===0&&<div style={{fontSize:12,color:'var(--t3)'}}>No headlines available.</div>}
+      {news.map((item,i)=>(
+        <a key={i} href={item.link} target="_blank" rel="noopener noreferrer" style={{textDecoration:'none',display:'block'}} className="news-item">
+          <div className="news-title">{item.title}</div>
+          <div className="news-time">{item.pubDate?new Date(item.pubDate).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}</div>
+        </a>
+      ))}
+    </div>
+  );
+};
+
+function buildFeed({weeklyMx,weeklyTx,uMap,rMap,players,draftPicks,rosterMap,draftData,nflState}){
+  const ev=[];
+  const gT=rid=>{const u=uMap[(rMap[rid]||{}).owner_id]||{};return{name:u.metadata?.team_name||u.display_name||'Unknown',av:u.avatar};};
+  const pN=pid=>{if(!players)return pid;const p=players[pid];return p?`${p.first_name||''} ${p.last_name||''}`.trim():pid;};
+  const nWks=Math.max(weeklyMx.length,weeklyTx.length);
+  for(let wi=0;wi<nWks;wi++){
+    const wk=wi+1,wkLabel=`Week ${wk}`;
+    const wData=weeklyMx[wi]||[];
+
+    // ── Transactions (always — including offseason) ──
+    (weeklyTx[wi]||[]).filter(t=>t.status==='complete').forEach(t=>{
+      const teams=(t.roster_ids||[]).map(rid=>gT(rid).name);
+      const ts=fmtTs(t.status_updated||t.created);
+      if(t.type==='trade'){
+        const adds=Object.keys(t.adds||{});const picks=t.draft_picks||[];
+        const sample=adds.slice(0,2).map(p=>pN(p)).filter(Boolean);
+        const assets=[...sample,picks.length?`${picks.length} pick${picks.length>1?'s':''}`:null].filter(Boolean);
+        const tradeSides=(t.roster_ids||[]).map(rid=>{
+          const u=uMap[(rMap[rid]||{}).owner_id]||{};
+          const name=u.metadata?.team_name||u.display_name||'Unknown';
+          const playerIds=Object.entries(t.adds||{}).filter(([,rcv])=>String(rcv)===String(rid)).map(([pid])=>pid);
+          const pkLabels=(t.draft_picks||[]).filter(pk=>String(pk.owner_id)===String(rid)).map(pk=>{
+            const r=['1st','2nd','3rd','4th'][pk.round-1]||`${pk.round}th`;
+            return`${pk.season} ${r} round pick`;
+          });
+          return{rid,name,av:u.avatar,playerIds,picks:pkLabels};
+        });
+        const rawTs=t.status_updated||t.created||0;
+        const txTs=rawTs>1e11?rawTs:rawTs*1000; // normalize seconds→ms if needed
+        ev.push({id:`trade-${t.transaction_id||Math.random()}`,wk,wkLabel:ts||wkLabel,type:'trade',ord:1,sortTs:txTs,rosterIds:t.roster_ids||[],isTrade:true,tradeSides,title:`${teams.slice(0,2).join(' and ')} made a deal`,body:assets.length?`Moved: ${assets.join(', ')}${adds.length>2?` +${adds.length-2} more`:''}`:null,chips:teams,playerIds:adds.slice(0,4)});
+      }else if(t.type==='waiver'||t.type==='free_agent'){
+        const adds=Object.keys(t.adds||{}).map(p=>pN(p)).filter(Boolean);
+        const drops=Object.keys(t.drops||{}).map(p=>pN(p)).filter(Boolean);
+        const addIds=Object.keys(t.adds||{});
+        const bid=t.settings?.waiver_bid;
+        if(!adds.length)return;
+        const rawTxTs=t.status_updated||t.created||0;
+        const waiverTs=rawTxTs>1e11?rawTxTs:rawTxTs*1000;
+        ev.push({id:`tx-${t.transaction_id||Math.random()}`,wk,wkLabel:ts||wkLabel,type:t.type,ord:6,sortTs:waiverTs,rosterIds:t.roster_ids||[],title:`${teams[0]||'A team'} made a move`,body:`Added ${adds.slice(0,2).join(', ')}${drops.length?`. Dropped ${drops[0]}.`:''}`,chips:[...adds.slice(0,2),bid!=null?`$${bid} FAAB`:null].filter(Boolean),playerIds:addIds.slice(0,4)});
+      }
+    });
+
+    // ── Game events (only when scores exist) ──
+    if(!Array.isArray(wData)||!wData.length)continue;
+    const mm={};wData.forEach(m=>{if(!mm[m.matchup_id])mm[m.matchup_id]=[];mm[m.matchup_id].push(m);});
+    const pairs=Object.values(mm).filter(p=>p.length===2&&(p[0].points>0||p[1].points>0));
+    if(!pairs.length)continue;
+    const scored=wData.filter(m=>m.points>0).map(m=>m.points);
+    const sortedS=[...scored].sort((a,b)=>a-b);
+    const median=sortedS[Math.floor(sortedS.length/2)]||0;
+    const avg=scored.length?scored.reduce((a,b)=>a+b,0)/scored.length:0;
+    const hi=Math.max(...scored);
+    const hiM=wData.find(m=>m.points===hi);
+    if(hiM){const t=gT(hiM.roster_id);ev.push({id:`king-${wk}`,wk,wkLabel,type:'king',ord:2,sortTs:draftEndMs+wk*WEEK_MS+2000,rosterIds:[hiM.roster_id],title:`${t.name} put up a monster week`,body:`${hi.toFixed(1)} points — the highest score of Week ${wk}.`,chips:[`${hi.toFixed(1)} pts`,`Avg: ${avg.toFixed(1)}`]});}
+    const lo=Math.min(...scored);
+    const loM=wData.find(m=>m.points===lo&&m.points>0);
+    if(loM&&lo>0){const t=gT(loM.roster_id);ev.push({id:`goat-${wk}`,wk,wkLabel,type:'goat',ord:5,sortTs:draftEndMs+wk*WEEK_MS+5000,rosterIds:[loM.roster_id],title:`${t.name} had one to forget`,body:`Just ${lo.toFixed(1)} points — the week's lowest score.`,chips:[`${lo.toFixed(1)} pts`,`${(avg-lo).toFixed(1)} below avg`]});}
+    pairs.forEach(([a,b])=>{
+      const win=(a.points||0)>(b.points||0)?a:b;const lose=(a.points||0)<(b.points||0)?a:b;
+      const wpts=win.points||0,lpts=lose.points||0;if(!wpts||!lpts)return;
+      const margin=wpts-lpts;const wt=gT(win.roster_id),lt=gT(lose.roster_id);
+      if(wpts<median&&median>0)ev.push({id:`lucky-${wk}-${win.roster_id}`,wk,wkLabel,type:'lucky',ord:3,sortTs:draftEndMs+wk*WEEK_MS+3000,rosterIds:[win.roster_id,lose.roster_id],title:`${wt.name} stole a win`,body:`Won with just ${wpts.toFixed(1)} — below the week's median of ${median.toFixed(1)}. ${lt.name} was somehow worse.`,chips:[`Won ${wpts.toFixed(1)}-${lpts.toFixed(1)}`]});
+      if(lpts>median&&median>0)ev.push({id:`unlucky-${wk}-${lose.roster_id}`,wk,wkLabel,type:'unlucky',ord:3,sortTs:draftEndMs+wk*WEEK_MS+3000,rosterIds:[lose.roster_id,win.roster_id],title:`${lt.name} got robbed`,body:`Scored ${lpts.toFixed(1)} — above median — and still lost to ${wt.name}'s ${wpts.toFixed(1)}.`,chips:[`Lost ${lpts.toFixed(1)}-${wpts.toFixed(1)}`]});
+      if(margin>30)ev.push({id:`blowout-${wk}-${win.roster_id}`,wk,wkLabel,type:'blowout',ord:4,sortTs:draftEndMs+wk*WEEK_MS+4000,rosterIds:[win.roster_id,lose.roster_id],title:`${wt.name} delivered a beatdown`,body:`Beat ${lt.name} by ${margin.toFixed(1)} points. Dominant.`,chips:[`${wpts.toFixed(1)}-${lpts.toFixed(1)}`,`+${margin.toFixed(1)}`]});
+      if(margin>0&&margin<6)ev.push({id:`close-${wk}-${win.roster_id}`,wk,wkLabel,type:'close',ord:4,sortTs:draftEndMs+wk*WEEK_MS+4000,rosterIds:[win.roster_id,lose.roster_id],title:`${wt.name} survived by ${margin.toFixed(2)}`,body:`${lt.name} is still thinking about this one.`,chips:[`${wpts.toFixed(2)}-${lpts.toFixed(2)}`]});
+    });
+  }
+
+  // ── Draft picks — individual events, each with sortTs ───────────────────────
+  const draftBaseMs=(draftData?.start_time||0)*1000;
+  const draftLastMs=(draftData?.last_picked||draftData?.start_time||0)*1000;
+  const totalPicks=draftPicks?.length||0;
+  const WEEK_MS=7*24*3600*1000;
+  if(Array.isArray(draftPicks)&&draftPicks.length>0){
+    const gTN=rid=>{const r=rosterMap[rid]||{};const u=uMap[r.owner_id]||{};return u.metadata?.team_name||u.display_name||'?';};
+    const nTeams=Object.keys(rosterMap).length||12;
+    draftPicks.forEach(pk=>{
+      const m=pk.metadata||{};
+      const pData=players?.[pk.player_id]||{};
+      const pickInRound=((pk.pick_no-1)%nTeams)+1;
+      ev.push({
+        id:`pick-${pk.pick_no}`,
+        type:'draft_pick',
+        isDraftPick:true,
+        wk:0,
+        sortTs:DRAFT_TIMESTAMPS[pk.pick_no]!==undefined
+          ?DRAFT_TIMESTAMPS[pk.pick_no]
+          :draftLastMs-(totalPicks-pk.pick_no),
+        pick_no:pk.pick_no,
+        pickLabel:`${pk.round}.${String(pickInRound).padStart(2,'0')}`,
+        round:pk.round,
+        player_id:pk.player_id,
+        espn_id:pData.espn_id||m.espn_id||null,
+        name:m.first_name?`${m.first_name} ${m.last_name||''}`.trim():pk.player_id,
+        pos:m.position||'',
+        nflTeam:m.team||'',
+        college:pData.college||m.college||null,
+        height:pData.height||null,
+        weight:pData.weight||null,
+        teamName:gTN(pk.roster_id),
+        roster_id:pk.roster_id,
+        rosterIds:[pk.roster_id],
+      });
+    });
+    // Draft storyline event — appears just after the last pick
+    if(draftData?.status==='complete'){
+      ev.push({
+        id:`draft-storyline`,
+        type:'storyline',
+        isStoryline:true,
+        sortTs:draftLastMs+1000,
+        wk:0,
+        storyKey:`draft_${draftData?.season}`,
+        title:`${draftData?.season} Draft Recap`,
+        storyPrompt:`${draftData?.season} fantasy football draft just wrapped. Provide a short 2-sentence punchy recap. Be dramatic, name teams and players. No preamble or labels.`,
+      });
+    }
+  }
+
+  // ── Season/week announcements (only during active season) ─────────────────
+  const draftEndMs=draftBaseMs+(draftPicks?.length||0)*90000;
+  const st=nflState?.season_type;
+  if(st==='regular'||st==='post'){
+    ev.push({id:'season-start',type:'season_start',isAnnouncement:true,wk:1,
+      sortTs:draftEndMs+WEEK_MS*0.5,
+      title:`The ${nflState.season} Season Has Begun`,body:`${Object.keys(rosterMap).length} teams. One champion.`});
+  }
+
+  return ev;
+}
+
+function detectStreaks({weeklyMx,rMap,uMap}){
+  const gN=rid=>{const u=uMap[(rMap[rid]||{}).owner_id]||{};return u.metadata?.team_name||u.display_name||'?';};
+  const td={};
+  weeklyMx.forEach((wData)=>{
+    if(!Array.isArray(wData))return;
+    const mm={};wData.forEach(m=>{if(!mm[m.matchup_id])mm[m.matchup_id]=[];mm[m.matchup_id].push(m);});
+    Object.values(mm).filter(p=>p.length===2).forEach(([a,b])=>{
+      if(!a.points&&!b.points)return;
+      const aW=(a.points||0)>(b.points||0);
+      [[a,aW],[b,!aW]].forEach(([m,won])=>{if(!td[m.roster_id])td[m.roster_id]=[];td[m.roster_id].push({pts:m.points||0,won});});
+    });
+  });
+  const allPts=Object.values(td).flatMap(w=>w.map(x=>x.pts)).filter(p=>p>0);
+  const avg=allPts.length?allPts.reduce((a,b)=>a+b,0)/allPts.length:100;
+  const streaks=[];
+  Object.entries(td).forEach(([rid,weeks])=>{
+    if(!weeks.length)return;
+    const rev=[...weeks].reverse();const name=gN(rid);
+    let ws=0;for(const w of rev){if(w.won)ws++;else break;}
+    let ls=0;for(const w of rev){if(!w.won)ls++;else break;}
+    let hs=0;for(const w of rev){if(w.pts>avg)hs++;else break;}
+    let cs=0;for(const w of rev){if(w.pts>0&&w.pts<avg)cs++;else break;}
+    const stA=n=>rev.slice(0,n).reduce((a,b)=>a+b.pts,0)/n;
+    if(ws>=3)streaks.push({rid,name,type:'hot_streak',count:ws,sub:`${ws}-game win streak`,detail:`${stA(ws).toFixed(1)} pts avg`});
+    else if(ls>=3)streaks.push({rid,name,type:'cold_streak',count:ls,sub:`${ls}-game skid`,detail:`${stA(ls).toFixed(1)} pts avg`});
+    if(hs>=3&&ws<3)streaks.push({rid,name,type:'scr_hot',count:hs,sub:`${hs} wks scoring above avg`,detail:`${stA(hs).toFixed(1)} pts avg`});
+    if(cs>=3&&ls<3)streaks.push({rid,name,type:'scr_cold',count:cs,sub:`${cs} wks scoring below avg`,detail:`${stA(cs).toFixed(1)} pts avg`});
+  });
+  return streaks.sort((a,b)=>b.count-a.count);
+}
+
+const spStyle=t=>({hot_streak:{background:'#fff7ed',color:'#ea580c'},cold_streak:{background:'#eff6ff',color:'#2563eb'},scr_hot:{background:'#f0fdf4',color:'#16a34a'},scr_cold:{background:'#fef2f2',color:'#dc2626'}}[t]||{background:'#f0eeea',color:'#666'});
+
+// Load all data for a given league ID (works for current or historical)
+async function loadSeasonData(leagueId,get){
+  const [lg,us,rs,ns]=await Promise.all([get(`${BASE}/league/${leagueId}`),get(`${BASE}/league/${leagueId}/users`),get(`${BASE}/league/${leagueId}/rosters`),get(`${BASE}/state/nfl`)]);
+  if(!lg?.league_id)throw new Error('League not found.');
+  // For historical seasons, determine max week from season status
+  // A complete season finished at playoffs; try up to week 18
+  const isHistory=lg.status==='complete';
+  const maxWk=isHistory?18:Math.max(1,ns.week||1);
+  const [wmx,wtx]=await Promise.all([
+    Promise.all(Array.from({length:maxWk},(_,i)=>get(`${BASE}/league/${leagueId}/matchups/${i+1}`).catch(()=>[]))),
+    Promise.all(Array.from({length:maxWk},(_,i)=>get(`${BASE}/league/${leagueId}/transactions/${i+1}`).catch(()=>[])))
+  ]);
+  // Filter out empty weeks
+  const activeWks=wmx.filter(w=>Array.isArray(w)&&w.length>0&&w.some(m=>m.points>0));
+  const curWk=isHistory?activeWks.length:Math.max(1,ns.week||1);
+  // Load draft + bracket
+  let draftData=null,draftPicks=[],bracket=[];
+  try{
+    const drafts=await get(`${BASE}/league/${leagueId}/drafts`);
+    if(Array.isArray(drafts)&&drafts.length){
+      const lat=drafts[drafts.length-1];
+      [draftData,draftPicks]=await Promise.all([get(`${BASE}/draft/${lat.draft_id}`),get(`${BASE}/draft/${lat.draft_id}/picks`)]);
+      if(!Array.isArray(draftPicks))draftPicks=[];
+    }
+  }catch{}
+  try{
+    const b=await get(`${BASE}/league/${leagueId}/winners_bracket`);
+    if(Array.isArray(b))bracket=b;
+  }catch{}
+  return{league:lg,users:us,rosters:rs,nflState:ns,weeklyMx:wmx,weeklyTx:wtx,allTx:wtx.flat().filter(t=>t.status==='complete'),curWk,draftData,draftPicks,bracket,loaded:true};
+}
+
+function App(){
+  const [view,setView]=useState('feed');
+  const [teamId,setTeamId]=useState(null);
+  const [prog,setProg]=useState(0);
+  const [initLoaded,setInitLoaded]=useState(false);
+  const [err,setErr]=useState(null);
+  const [seasonChain,setSeasonChain]=useState([]);
+  const [activeSzn,setActiveSzn]=useState(LEAGUE_ID);
+  const [cache,setCache]=useState({});
+  const [loadingSzns,setLoadingSzns]=useState(new Set());
+  const [players,setPlayers]=useState(null);
+  const [prevRanks,setPrevRanks]=useState({});// owner_id -> finish position in prior season
+  const [apiKey,setApiKey]=useState(()=>{try{return localStorage.getItem('ff_k')||''}catch{return ''}});
+  const [showK,setShowK]=useState(false);
+  const [mxWk,setMxWk]=useState(1);
+  const [txWk,setTxWk]=useState(1);
+  const saveK=k=>{setApiKey(k);try{localStorage.setItem('ff_k',k)}catch{}};
+
+  // Initial load
+  useEffect(()=>{
+    (async()=>{
+      try{
+        setProg(15);
+        // Load current season
+        const data=await loadSeasonData(LEAGUE_ID,get);
+        setCache(c=>({...c,[LEAGUE_ID]:data}));
+        setInitLoaded(true);
+        setMxWk(data.curWk);setTxWk(data.curWk);
+        setProg(70);
+        // Build season chain by following previous_league_id
+        const chain=[{id:LEAGUE_ID,season:data.league.season,name:data.league.name}];
+        let prevId=data.league.previous_league_id;
+        for(let i=0;i<8&&prevId;i++){
+          try{
+            const lg=await get(`${BASE}/league/${prevId}`);
+            chain.push({id:prevId,season:lg.season,name:lg.name});
+            prevId=lg.previous_league_id;
+          }catch{break;}
+        }
+        setSeasonChain(chain);
+        setProg(85);
+        // Get previous season's final standings for power rankings
+        if(chain.length>1){
+          const prevId2=chain[1].id;
+          try{
+            const [prevRosters,prevUsers]=await Promise.all([get(`${BASE}/league/${prevId2}/rosters`),get(`${BASE}/league/${prevId2}/users`)]);
+            const puMap={};prevUsers.forEach(u=>{puMap[u.user_id]=u;});
+            const sortedPrev=[...prevRosters].sort((a,b)=>{
+              const dw=(b.settings?.wins||0)-(a.settings?.wins||0);if(dw)return dw;
+              return((b.settings?.fpts||0)+(b.settings?.fpts_decimal||0)/100)-((a.settings?.fpts||0)+(a.settings?.fpts_decimal||0)/100);
+            });
+            const ranks={};sortedPrev.forEach((r,i)=>{ranks[r.owner_id]=i+1;});
+            setPrevRanks(ranks);
+          }catch{}
+        }
+        setProg(100);
+        // Load players DB — use Cloudflare Worker cache if configured, else direct
+        const playersUrl=WORKER_URL||`${BASE}/players/nfl`;
+        get(playersUrl).then(p=>setPlayers(p)).catch(()=>{});
+      }catch(e){setErr(e.message);}
+    })();
+  },[]);
+
+  // Load historical season when selected
+  useEffect(()=>{
+    if(!activeSzn||activeSzn===LEAGUE_ID||cache[activeSzn]?.loaded)return;
+    setLoadingSzns(s=>{const n=new Set(s);n.add(activeSzn);return n;});
+    loadSeasonData(activeSzn,get).then(data=>{
+      setCache(c=>({...c,[activeSzn]:data}));
+      setLoadingSzns(s=>{const n=new Set(s);n.delete(activeSzn);return n;});
+    }).catch(()=>{
+      setLoadingSzns(s=>{const n=new Set(s);n.delete(activeSzn);return n;});
+    });
+  },[activeSzn]);
+
+  const d=cache[activeSzn]||{};
+  const uMap=useMemo(()=>{const m={};(d.users||[]).forEach(u=>{m[u.user_id]=u;});return m;},[d.users]);
+  const rMap=useMemo(()=>{const m={};(d.rosters||[]).forEach(r=>{m[r.roster_id]=r;});return m;},[d.rosters]);
+  const gU=rid=>{const r=rMap[rid]||{};return uMap[r.owner_id]||{};};
+  const gN=rid=>{const u=gU(rid);return u.metadata?.team_name||u.display_name||'Unknown';};
+  const rFull=pid=>{if(!players)return{name:pid,pos:'',team:''};const p=players[pid];if(!p)return{name:pid,pos:'',team:''};return{name:`${p.first_name||''} ${p.last_name||''}`.trim()||pid,pos:p.position||'',team:p.team||'FA'};};
+
+  // Map player_id → current team name (for showing trades in draft cards)
+  const currentRosterOf=useMemo(()=>{
+    const m={};
+    (d.rosters||[]).forEach(r=>{
+      const u=uMap[r.owner_id]||{};
+      const name=u.metadata?.team_name||u.display_name||'?';
+      (r.players||[]).forEach(pid=>{m[String(pid)]=name;});
+    });
+    return pid=>m[String(pid)]||null;
+  },[d.rosters,uMap]);
+  const playerSeasonPts=useMemo(()=>{
+    const pts={};
+    (d.weeklyMx||[]).forEach(wData=>{
+      if(!Array.isArray(wData))return;
+      wData.forEach(m=>{
+        const pp=m.players_points;
+        if(pp&&Object.keys(pp).length>0){
+          Object.entries(pp).forEach(([pid,p])=>{if(pid&&p>0)pts[pid]=(pts[pid]||0)+p;});
+        }else if(m.starters&&m.starters_points){
+          m.starters.forEach((pid,i)=>{const p=m.starters_points[i];if(pid&&pid!=='0'&&p>0)pts[pid]=(pts[pid]||0)+p;});
+        }
+      });
+    });
+    return pts;
+  },[d.weeklyMx]);
+
+  // Power rankings
+  const rankings=useMemo(()=>{
+    if(!d.loaded)return[];
+    const isCurrentSzn=activeSzn===LEAGUE_ID;
+    const teams=(d.rosters||[]).map(r=>{
+      const u=uMap[r.owner_id]||{};
+      const name=u.metadata?.team_name||u.display_name||'?';
+      const av=u.avatar;const dn=u.display_name||'';
+      const wins=r.settings?.wins||0;const losses=r.settings?.losses||0;
+      const wkPts=[];
+      (d.weeklyMx||[]).forEach(wData=>{if(!Array.isArray(wData))return;const m=wData.find(x=>x.roster_id===r.roster_id);if(m&&m.points>0)wkPts.push(m.points);});
+      const avg=wkPts.length?(wkPts.reduce((a,b)=>a+b,0)/wkPts.length).toFixed(1):'—';
+      const l3=(()=>{const r3=wkPts.slice(-3);return r3.length?(r3.reduce((a,b)=>a+b,0)/r3.length).toFixed(1):'—';})();
+      // Top 3 scorers from current roster
+      const top3=(r.players||[]).map(pid=>({pid,pts:playerSeasonPts[pid]||0})).filter(p=>p.pts>0).sort((a,b)=>b.pts-a.pts).slice(0,3).map(p=>{const f=rFull(p.pid);return{...f,pts:p.pts.toFixed(1)};});
+      const prevRk=isCurrentSzn?(prevRanks[r.owner_id]||999):999;
+      return{rid:r.roster_id,name,av,dn,wins,losses,avg,l3,top3,prevRk,ownerId:r.owner_id};
+    });
+    if(isCurrentSzn&&Object.keys(prevRanks).length>0){
+      // Sort by previous season finish
+      return teams.sort((a,b)=>a.prevRk-b.prevRk).map((t,i)=>({...t,rank:i+1}));
+    }else{
+      // Sort by current season record for historical
+      return teams.sort((a,b)=>{const dw=b.wins-a.wins;if(dw)return dw;return(parseFloat(b.avg)||0)-(parseFloat(a.avg)||0);}).map((t,i)=>({...t,rank:i+1}));
+    }
+  },[d.loaded,d.rosters,d.weeklyMx,uMap,prevRanks,playerSeasonPts,activeSzn]);
+
+  const prevSznLabel=seasonChain.length>1?seasonChain[1].season:null;
+
+  const sorted=useMemo(()=>(d.rosters||[]).map(r=>{const u=uMap[r.owner_id]||{};return{...r,teamName:u.metadata?.team_name||u.display_name||'?',dn:u.display_name||'—',avatar:u.avatar};}).sort((a,b)=>{const dw=(b.settings?.wins||0)-(a.settings?.wins||0);if(dw)return dw;return((b.settings?.fpts||0)+(b.settings?.fpts_decimal||0)/100)-((a.settings?.fpts||0)+(a.settings?.fpts_decimal||0)/100);}),[d.rosters,uMap]);
+
+  const curWk=d.curWk||1;
+  const effectiveMxWk=Math.min(mxWk,curWk);
+  const effectiveTxWk=Math.min(txWk,curWk);
+
+  const mxPairs=useMemo(()=>{
+    const wd=(d.weeklyMx||[])[effectiveMxWk-1]||[];
+    const mm={};wd.forEach(m=>{if(!mm[m.matchup_id])mm[m.matchup_id]=[];mm[m.matchup_id].push(m);});
+    return Object.values(mm).filter(p=>p.length===2).map(pair=>pair.map(m=>{const u=uMap[(rMap[m.roster_id]||{}).owner_id]||{};return{...m,tname:u.metadata?.team_name||u.display_name||'?',av:u.avatar};}));
+  },[d.weeklyMx,effectiveMxWk,uMap,rMap]);
+
+  const curTx=useMemo(()=>((d.weeklyTx||[])[effectiveTxWk-1]||[]).filter(t=>t.status==='complete'),[d.weeklyTx,effectiveTxWk]);
+
+  // All-time H2H records across all loaded seasons (keyed by owner_id pairs)
+  const h2hRecords=useMemo(()=>{
+    const rec={};
+    Object.values(cache).forEach(sd=>{
+      if(!sd?.loaded)return;
+      const srMap={};(sd.rosters||[]).forEach(r=>{srMap[r.roster_id]=r.owner_id;});
+      (sd.weeklyMx||[]).forEach(wData=>{
+        if(!Array.isArray(wData))return;
+        const mm={};wData.forEach(m=>{if(!mm[m.matchup_id])mm[m.matchup_id]=[];mm[m.matchup_id].push(m);});
+        Object.values(mm).filter(p=>p.length===2).forEach(([a,b])=>{
+          if(!a.points&&!b.points)return;
+          const ao=srMap[a.roster_id],bo=srMap[b.roster_id];
+          if(!ao||!bo)return;
+          const key=[ao,bo].sort().join('::');
+          if(!rec[key])rec[key]={[ao]:0,[bo]:0};
+          if((a.points||0)>(b.points||0))rec[key][ao]++;else rec[key][bo]++;
+        });
+      });
+    });
+    return rec;
+  },[cache]);
+
+  // League history aggregated across all loaded seasons
+  const leagueHistory=useMemo(()=>{
+    // Find champion roster_id from winners bracket (highest round, match 1)
+    const bracketChamp=bracket=>{
+      if(!bracket?.length)return null;
+      const played=bracket.filter(m=>m.w!=null);
+      if(!played.length)return null;
+      const maxR=Math.max(...played.map(m=>m.r||0));
+      return(played.filter(m=>m.r===maxR&&m.m===1)[0]||played.filter(m=>m.r===maxR)[0])?.w||null;
+    };
+    const byOwner={};
+    const seasons=[];
+    seasonChain.forEach(szn=>{
+      const sd=cache[szn.id];
+      if(!sd?.loaded)return;
+      const suMap={};(sd.users||[]).forEach(u=>{suMap[u.user_id]=u;});
+      const srMap={};(sd.rosters||[]).forEach(r=>{srMap[r.roster_id]=r.owner_id;});
+      const sortedR=[...(sd.rosters||[])].sort((a,b)=>{
+        const dw=(b.settings?.wins||0)-(a.settings?.wins||0);
+        return dw||((b.settings?.fpts||0)-(a.settings?.fpts||0));
+      });
+      // Determine actual champion from bracket, fall back to top seed
+      const champRid=bracketChamp(sd.bracket);
+      const champRoster=champRid?sortedR.find(r=>String(r.roster_id)===String(champRid)):sortedR[0];
+      const cu=suMap[champRoster?.owner_id]||{};
+      const champName=cu.metadata?.team_name||cu.display_name||'?';
+      const complete=sd.league?.status==='complete';
+      seasons.push({season:szn.season,id:szn.id,champion:champName,champOwnerId:champRoster?.owner_id,complete,teams:sortedR.length});
+      // Initialize owner entries
+      sortedR.forEach(r=>{
+        const u=suMap[r.owner_id]||{};
+        const name=u.metadata?.team_name||u.display_name||'Unknown';
+        const oid=r.owner_id;
+        if(!byOwner[oid])byOwner[oid]={oid,name,wins:0,losses:0,pf:0,seasons:0,championships:0,playoffWins:0,playoffLosses:0,playoffApps:0};
+        const o=byOwner[oid];
+        o.name=name;
+        o.wins+=r.settings?.wins||0;
+        o.losses+=r.settings?.losses||0;
+        o.pf+=(r.settings?.fpts||0)+(r.settings?.fpts_decimal||0)/100;
+        o.seasons++;
+      });
+      // Championship
+      const coid=champRoster?.owner_id;
+      if(complete&&coid&&byOwner[coid])byOwner[coid].championships++;
+      // Playoff records
+      const pStart=sd.league?.settings?.playoff_week_start;
+      if(pStart){
+        (sd.weeklyMx||[]).forEach((wData,wi)=>{
+          const wk=wi+1;if(wk<pStart)return;
+          if(!Array.isArray(wData))return;
+          const mm={};wData.forEach(m=>{if(!mm[m.matchup_id])mm[m.matchup_id]=[];mm[m.matchup_id].push(m);});
+          // Playoff appearances: count unique rosters in first playoff week
+          if(wk===pStart){
+            Object.values(mm).flat().forEach(m=>{
+              const oid=srMap[m.roster_id];
+              if(oid&&byOwner[oid]&&m.points>0)byOwner[oid].playoffApps++;
+            });
+          }
+          Object.values(mm).filter(p=>p.length===2).forEach(([a,b])=>{
+            if(!a.points&&!b.points)return;
+            const ao=srMap[a.roster_id],bo=srMap[b.roster_id];
+            if(!ao||!bo||!byOwner[ao]||!byOwner[bo])return;
+            if((a.points||0)>(b.points||0)){byOwner[ao].playoffWins++;byOwner[bo].playoffLosses++;}
+            else{byOwner[bo].playoffWins++;byOwner[ao].playoffLosses++;}
+          });
+        });
+      }
+    });
+    const standings=Object.values(byOwner).sort((a,b)=>b.wins-a.wins);
+    return{standings,seasons:seasons.reverse()};
+  },[seasonChain,cache]);
+
+  const feed=useMemo(()=>d.loaded?buildFeed({weeklyMx:d.weeklyMx||[],weeklyTx:d.weeklyTx||[],uMap,rMap,players,draftPicks:d.draftPicks||[],rosterMap:rMap,draftData:d.draftData,nflState:d.nflState}):[]
+    ,[d.loaded,d.weeklyMx,d.weeklyTx,uMap,rMap,players,d.draftPicks]);
+
+  const streaks=useMemo(()=>d.loaded?detectStreaks({weeklyMx:d.weeklyMx||[],rMap,uMap}):[]
+    ,[d.loaded,d.weeklyMx,rMap,uMap]);
+
+  // Flat chronological feed — sorted by sortTs descending (newest first)
+  const feedFlat=useMemo(()=>
+    [...feed].sort((a,b)=>(b.sortTs||0)-(a.sortTs||0))
+  ,[feed]);
+
+  // Build trade receive groups: for each team, what do they GET in the trade
+  // adds[pid]=rid → rid receives that player. picks[].roster_id → rid receives that pick.
+  const buildTradeReceives=t=>{
+    const groups={};
+    const ensure=rid=>{
+      const k=String(rid);
+      if(!groups[k]){const u=gU(rid);groups[k]={rid,name:u.metadata?.team_name||u.display_name||'Unknown',av:u.avatar,gets:{pl:[],pk:[]}};}
+    };
+    (t.roster_ids||[]).forEach(rid=>ensure(rid));
+    // adds = what each team receives
+    Object.entries(t.adds||{}).forEach(([pid,rid])=>{ensure(rid);groups[String(rid)].gets.pl.push(pid);});
+    // picks: owner_id = who RECEIVES the pick after the trade
+    // roster_id = original slot owner (whose pick it is in the draft order)
+    (t.draft_picks||[]).forEach(pick=>{
+      ensure(pick.owner_id);
+      const origRoster=rMap[pick.roster_id]||{};
+      const origUser=uMap[origRoster.owner_id]||{};
+      const orig=origUser.metadata?.team_name||origUser.display_name||null;
+      const isOwnSlot=String(pick.roster_id)===String(pick.owner_id);
+      groups[String(pick.owner_id)].gets.pk.push({...pick,orig:isOwnSlot?null:orig});
+    });
+    // Only return teams that have at least something (filter out teams with nothing)
+    const all=Object.values(groups);
+    const withAssets=all.filter(g=>g.gets.pl.length>0||g.gets.pk.length>0);
+    return withAssets.length>=2?withAssets:all;
+  };
+
+  const resolvePick=pick=>{
+    const dp=d.draftPicks||[];const dd=d.draftData;
+    if(!dp.length||!dd)return null;
+    if(parseInt(pick.season)>parseInt(d.league?.season||'9999'))return null;
+    const s2r=dd.slot_to_roster_id||{};
+    // roster_id is the permanent slot owner — use it to find the draft slot number
+    let slot=null;Object.entries(s2r).forEach(([s,r])=>{if(String(r)===String(pick.roster_id))slot=parseInt(s);});
+    if(!slot)return null;
+    const m=dp.find(p=>p.round===pick.round&&p.draft_slot===slot);
+    if(!m)return null;
+    const md=m.metadata||{};const n=`${md.first_name||''} ${md.last_name||''}`.trim();
+    return n?{name:n,pos:md.position||'',team:md.team||''}:null;
+  };
+
+  // Draft board: team-centric view grouped by roster_id (actual drafter)
+  const draftTeams=useMemo(()=>{
+    const dp=d.draftPicks||[];const dd=d.draftData;
+    if(!dd||!dp.length)return null;
+    const s2r=dd.slot_to_roster_id||{};
+    // Order teams by draft slot
+    const slotOrder=Object.entries(s2r).sort((a,b)=>parseInt(a[0])-parseInt(b[0])).map(([,rid])=>String(rid));
+    // Group picks by actual drafter (roster_id)
+    const byTeam={};
+    dp.forEach(pick=>{
+      const rid=String(pick.roster_id);
+      if(!byTeam[rid])byTeam[rid]=[];
+      byTeam[rid].push(pick);
+    });
+    Object.values(byTeam).forEach(picks=>picks.sort((a,b)=>a.pick_no-b.pick_no));
+    // Build current player locations
+    const pcr={};(d.rosters||[]).forEach(r=>{(r.players||[]).forEach(pid=>{pcr[String(pid)]=r.roster_id;});});
+    return slotOrder.map(rid=>({rid,teamName:gN(parseInt(rid)),avatar:gU(parseInt(rid)).avatar,picks:byTeam[rid]||[],pcr}));
+  },[d.draftPicks,d.draftData,d.rosters,uMap,rMap]);
+
+  // Newsletter generator
+  const [nletter,setNletter]=useState('');const [nlLoading,setNlLoading]=useState(false);
+  const genNl=async()=>{
+    if(!apiKey.trim()){setNletter('__NK__');return;}
+    setNlLoading(true);setNletter('');
+    const sT=sorted.map((r,i)=>`${i+1}. ${r.teamName} (${r.settings?.wins||0}-${r.settings?.losses||0})`).join('\n');
+    const mT=mxPairs.map(([a,b])=>`${a.tname} ${(a.points||0).toFixed(1)} vs ${b.tname} ${(b.points||0).toFixed(1)}`).join('\n');
+    const tT=(d.allTx||[]).slice(0,10).map(t=>{const teams=(t.roster_ids||[]).map(rid=>gN(rid));if(t.type==='trade')return`TRADE: ${teams.join('+')}`;const adds=Object.keys(t.adds||{}).map(p=>rFull(p).name).join(', ');return`${t.type.toUpperCase()}: ${teams[0]} added ${adds}`;}).join('\n');
+    const stT=streaks.map(s=>`${s.name}: ${s.sub}`).join('\n');
+    const rkT=rankings.map((r,i)=>`${i+1}. ${r.name} (avg ${r.avg})`).join('\n');
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1300,messages:[{role:'user',content:`Witty commissioner newsletter for "${d.league?.name}", Week ${curWk}.\n\nStandings:\n${sT}\n\nScores:\n${mT||'none'}\n\nPower Rankings:\n${rkT}\n\nStreaks:\n${stT||'none'}\n\nTransactions:\n${tT||'none'}\n\n4-5 paragraphs, trash-talky. Name teams. Plain text.`}]})});
+      const dd2=await res.json();
+      if(dd2.error)throw new Error(dd2.error.message);
+      setNletter(dd2.content?.map(c=>c.text||'').join('')||'No response.');
+    }catch(e){setNletter('Error: '+e.message);}
+    setNlLoading(false);
+  };
+
+  const NAV=[{id:'feed',icon:'📡',label:'Feed'},{id:'teams',icon:'👥',label:'Teams'},{id:'rankings',icon:'📊',label:'Power Rankings'},{id:'standings',icon:'🏆',label:'Standings'},{id:'matchups',icon:'⚔️',label:'Matchups'},{id:'transactions',icon:'💼',label:'Moves'},{id:'draft',icon:'📋',label:'Draft'},{id:'history',icon:'🏅',label:'History'},{id:'newsletter',icon:'📰',label:'Newsletter'}];
+
+  const wkBar=(wk,setWk)=>(
+    <div className="wkbar">
+      <span style={{fontSize:10,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.05em'}}>Week</span>
+      <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>
+        {Array.from({length:curWk},(_,i)=>i+1).map(w=><button key={w} className="btn wkbtn" onClick={()=>setWk(w)} style={{fontWeight:w===wk?700:400,background:w===wk?'var(--hdr)':'none',color:w===wk?'var(--ht)':'var(--tx)',borderColor:w===wk?'var(--hdr)':'var(--bd2)'}}>{w}</button>)}
+      </div>
+    </div>
+  );
+
+  const sidebar=(
+    <div className="sdbar-wrap">
+      <div className="card sdbar" style={{padding:'1.25rem 1.25rem 1rem'}}>
+        <div style={{fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'.07em',color:'var(--t3)',marginBottom:'1rem'}}>⚡ Power Rankings</div>
+        {rankings.map((t,i)=>{
+          const color=rankColor(i+1,rankings.length);
+          const streak=streaks.find(s=>String(s.rid)===String(t.rid));
+          return(
+            <div key={t.rid} style={{marginBottom:'1rem',paddingBottom:'1rem',borderBottom:'.5px solid var(--bd)'}}>
+              {/* Team row */}
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:t.top3.length>0&&players?8:0}}>
+                <div style={{width:32,height:32,borderRadius:9,background:color,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:`0 2px 6px ${color}44`}}>
+                  <span style={{fontSize:15,fontWeight:800,color:'#fff'}}>{i+1}</span>
+                </div>
+                <Av avatar={t.av} name={t.name} size={32}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:15,fontWeight:800,letterSpacing:'-.02em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:5,flexWrap:'wrap',marginTop:1}}>
+                    <span style={{fontSize:11,color:'var(--t3)',fontWeight:600}}>{t.wins}-{t.losses}</span>
+                    <span style={{fontSize:10,color:'var(--t3)'}}>·</span>
+                    <span style={{fontSize:11,color:'var(--t3)'}}>{t.avg} ppg</span>
+                    {streak&&<span style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:20,...spStyle(streak.type)}}>{streak.count}{streak.type.includes('streak')?streak.type.includes('hot')?'W🔥':'L❄️':streak.type.includes('hot')?'↑📈':'↓📉'}</span>}
+                  </div>
+                </div>
+              </div>
+              {/* Top players */}
+              {t.top3.length>0&&players&&(
+                <div style={{marginLeft:42,display:'flex',flexDirection:'column',gap:3}}>
+                  {t.top3.map((p,pi)=>{
+                    const pcol=pc(p.pos);
+                    return(
+                      <div key={pi} style={{display:'flex',alignItems:'center',gap:6,padding:'4px 7px',background:pi===0?`${color}12`:'var(--bg)',borderRadius:7,border:pi===0?`1px solid ${color}25`:'none'}}>
+                        <span style={{fontSize:9,fontWeight:800,color:pi===0?color:'var(--t3)',width:10,flexShrink:0}}>{pi===0?'①':pi===1?'②':'③'}</span>
+                        <span style={{fontSize:9,fontWeight:800,padding:'1px 4px',borderRadius:3,background:pcol.accent+'22',color:pcol.accent,flexShrink:0}}>{p.pos}</span>
+                        <span style={{fontSize:12,fontWeight:700,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'var(--tx)'}}>{p.name}</span>
+                        <span style={{fontSize:11,fontWeight:800,color:pi===0?color:'var(--t2)',flexShrink:0}}>{p.pts}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {prevSznLabel&&activeSzn===LEAGUE_ID&&<div style={{fontSize:10,color:'var(--t3)',lineHeight:1.5}}>Ordered by {prevSznLabel} final standings.</div>}
+      </div>
+      <NewsBox/>
+    </div>
+  );
+
+  // ── Render ────────────────────────────────────────────────
+  if(err)return<div className="loading"><div style={{color:'var(--red)',fontSize:14}}>{err}</div></div>;
+  if(!initLoaded)return(
+    <div className="loading">
+      <Spin s={28}/>
+      <div style={{fontSize:14,fontWeight:700}}>Loading your league…</div>
+      <div className="prog"><div className="prog-f" style={{width:prog+'%'}}/></div>
+      <div style={{fontSize:11,color:'var(--t3)'}}>{prog<30?'Fetching league…':prog<70?'Loading all weeks…':prog<85?'Building season history…':'Almost ready…'}</div>
+    </div>
+  );
+
+  const activeSznLoading=loadingSzns.has(activeSzn);
+  const activeData=d.loaded;
+
+  return(
+    <div>
+      <header className="hdr">
+        <div className="hdr-i">
+          <div>
+            <div className="ltitle">🏈 {d.league?.name||'Fantasy League'}</div>
+            <div className="lsub">{d.league?.season} · {(d.rosters||[]).length} teams · Week {curWk}</div>
+          </div>
+          <nav className="nav">
+            {NAV.map(n=><button key={n.id} className={`ntab${view===n.id?' on':''}`} onClick={()=>{
+              setView(n.id);
+              if(n.id!=='teams')setTeamId(null);
+              // Pre-load all seasons when History tab is opened
+              if(n.id==='history'){
+                seasonChain.forEach(s=>{
+                  if(s.id!==LEAGUE_ID&&!cache[s.id]?.loaded&&!loadingSzns.has(s.id)){
+                    setLoadingSzns(ls=>{const n=new Set(ls);n.add(s.id);return n;});
+                    loadSeasonData(s.id,get).then(data=>{
+                      setCache(c=>({...c,[s.id]:data}));
+                      setLoadingSzns(ls=>{const n=new Set(ls);n.delete(s.id);return n;});
+                    }).catch(()=>setLoadingSzns(ls=>{const n=new Set(ls);n.delete(s.id);return n;}));
+                  }
+                });
+              }
+            }}>{n.icon} {n.label}</button>)}
+          </nav>
+        </div>
+        {seasonChain.length>1&&(
+          <div className="szn-bar">
+            <div className="szn-i">
+              {seasonChain.map(s=>(
+                <button key={s.id} className={`szntab${activeSzn===s.id?' on':''}${loadingSzns.has(s.id)?' loading':''}`} onClick={()=>{setActiveSzn(s.id);setMxWk(1);setTxWk(1);}}>
+                  {loadingSzns.has(s.id)?'…':s.season}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </header>
+
+      {activeSznLoading&&(
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'3rem',color:'var(--t3)',fontSize:13}}>
+          <Spin s={18}/> Loading {seasonChain.find(s=>s.id===activeSzn)?.season||'season'} data…
+        </div>
+      )}
+
+      {!activeSznLoading&&activeData&&(
+        <>
+        {/* FEED */}
+        {view==='feed'&&(
+          <div className="pg">
+            <div>
+              {/* League banner */}
+              <div className="lg-banner">
+                <div className="lg-banner-main">{LEAGUE_TAGLINE}</div>
+              </div>
+              {/* Season card */}
+              <div className="card cp" style={{marginBottom:'1.1rem',borderRadius:'0 0 var(--rl) var(--rl)',borderTop:'none',borderTopLeftRadius:0,borderTopRightRadius:0}}>
+                {(()=>{
+                  const st=d.nflState?.season_type;
+                  const yr=d.league?.season||'';
+                  const label=st==='pre'?`${yr} Preseason`:st==='regular'?`${yr} Season`:st==='post'?`${yr} Postseason`:`${yr} Offseason`;
+                  return(
+                    <div style={{textAlign:'center'}}>
+                      <div style={{fontSize:26,fontWeight:900,letterSpacing:'-.03em',color:'var(--tx)'}}>{label}</div>
+                      {LEAGUE_MESSAGE&&<div style={{fontSize:16,fontWeight:600,color:'var(--t2)',marginTop:4,letterSpacing:'-.01em'}}>{LEAGUE_MESSAGE}</div>}
+                    </div>
+                  );
+                })()}
+              </div>
+              {/* Ruler */}
+              <div className="ruler-wrap">
+                <svg viewBox="0 0 880 88" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',display:'block',borderRadius:10,filter:'drop-shadow(0 2px 8px rgba(0,0,0,0.13))'}}>
+                  <defs>
+                    <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#F0C84A"/>
+                      <stop offset="40%" stopColor="#E0A820"/>
+                      <stop offset="100%" stopColor="#C88A10"/>
+                    </linearGradient>
+                    <linearGradient id="eg" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#8B5E10"/>
+                      <stop offset="8%" stopColor="#C88A10"/>
+                      <stop offset="92%" stopColor="#C88A10"/>
+                      <stop offset="100%" stopColor="#8B5E10"/>
+                    </linearGradient>
+                  </defs>
+                  <rect x="0" y="0" width="880" height="88" rx="9" fill="url(#rg)"/>
+                  <rect x="0" y="0" width="880" height="13" rx="5" fill="url(#eg)" opacity=".7"/>
+                  <rect x="0" y="75" width="880" height="13" rx="5" fill="url(#eg)" opacity=".7"/>
+                  {[18,28,38,52,62,70].map(y=>(
+                    <line key={y} x1="20" y1={y} x2="860" y2={y} stroke="#B87A08" strokeWidth=".6" opacity=".18"/>
+                  ))}
+                  {Array.from({length:11*16+1},(_,i)=>{
+                    const inch=i%16===0,half=i%8===0&&!inch,qtr=i%4===0&&!half&&!inch,eighth=i%2===0&&!qtr&&!half&&!inch;
+                    const x=20+i*(840/176);
+                    const h=inch?38:half?26:qtr?18:eighth?12:8;
+                    const sw=inch?1.6:half?1.1:0.75;
+                    const op=inch?1:half?.85:qtr?.65:.45;
+                    return<line key={i} x1={x} y1={13} x2={x} y2={13+h} stroke="#5C3800" strokeWidth={sw} opacity={op}/>;
+                  })}
+                  {Array.from({length:10},(_,i)=>{
+                    const n=i+1,x=20+n*16*(840/176);
+                    return<text key={n} x={x} y={63} textAnchor="middle" fontSize="15" fontWeight="700" fill="#5C3800" fontFamily="-apple-system,sans-serif" opacity=".9">{n}</text>;
+                  })}
+                  <rect x="0" y="0" width="880" height="88" rx="9" fill="none" stroke="#9A6808" strokeWidth="1.2"/>
+                </svg>
+              </div>
+              {/* Active streaks */}
+              {streaks.length>0&&(
+                <div style={{marginBottom:'1rem'}}>
+                  <div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--t3)',marginBottom:8}}>🔔 Active Right Now</div>
+                  <div className="sbar">
+                    {streaks.map((s,i)=>{
+                      const st=spStyle(s.type);
+                      return(
+                        <div key={i} className="spill" style={{...st,border:`1px solid ${st.color}33`}}>
+                          <span style={{fontWeight:800}}>{s.name}</span>
+                          <span style={{opacity:.7,fontWeight:500,fontSize:10,marginLeft:2}}>{s.sub}</span>
+                          <span style={{background:'rgba(0,0,0,.1)',borderRadius:10,padding:'1px 7px',fontSize:10,marginLeft:4}}>{s.detail}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {/* Feed events — flat chronological, newest first */}
+              {feedFlat.length===0
+                ?<div className="card cp" style={{color:'var(--t3)',textAlign:'center'}}>No events yet.</div>
+                :feedFlat.map(e=>{
+                  if(e.isAnnouncement)return<AnnouncementCard key={e.id} ev={e}/>;
+                  if(e.isStoryline)return<StorylineCard key={e.id} storyKey={e.storyKey} title={e.title} prompt={e.storyPrompt}/>;
+                  if(e.isDraftPick)return<DraftPickFeedCard key={e.id} pick={e} currentRosterOf={currentRosterOf}/>;
+                  if(e.isTrade)return<TradeFeedCard key={e.id} ev={e} players={players}/>;
+                  // Week storyline: inject after last event of a completed week
+                  return<ECard key={e.id} ev={e} players={players}/>;
+                })
+              }
+            </div>
+            {sidebar}
+          </div>
+        )}
+
+        {/* TEAMS */}
+        {view==='teams'&&(
+          <div className="pg wide">
+            <div>
+            {!teamId?(
+              // ── Team selection grid ───────────────────────────────
+              <div>
+                <div style={{fontSize:15,fontWeight:800,marginBottom:'1rem'}}>👥 All Teams</div>
+                <div className="team-grid">
+                  {sorted.map((r,i)=>{
+                    const rank=rankings.findIndex(rk=>String(rk.rid)===String(r.roster_id))+1||null;
+                    const color=rank?rankColor(rank,rankings.length):'#999';
+                    return(
+                      <div key={r.roster_id} className="team-card" onClick={()=>setTeamId(r.roster_id)}>
+                        {rank&&<div style={{width:32,height:32,borderRadius:8,background:color,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                          <span style={{fontSize:14,fontWeight:800,color:'#fff'}}>{rank}</span>
+                        </div>}
+                        <Av avatar={r.avatar} name={r.teamName} size={38}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:15,fontWeight:800,letterSpacing:'-.02em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.teamName}</div>
+                          <div style={{fontSize:11,color:'var(--t3)'}}>{r.dn}</div>
+                        </div>
+                        <div style={{display:'flex',gap:24,flexShrink:0,alignItems:'center'}}>
+                          <div style={{textAlign:'right'}}>
+                            <div style={{fontSize:17,fontWeight:800}}>{r.settings?.wins||0}-{r.settings?.losses||0}</div>
+                            <div style={{fontSize:10,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.04em'}}>Record</div>
+                          </div>
+                          <div style={{textAlign:'right'}}>
+                            <div style={{fontSize:17,fontWeight:800}}>{rankings.find(rk=>String(rk.rid)===String(r.roster_id))?.avg||'—'}</div>
+                            <div style={{fontSize:10,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.04em'}}>Avg PPG</div>
+                          </div>
+                          <span style={{fontSize:18,color:'var(--t3)'}}>›</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ):(()=>{
+              // ── Team detail feed ─────────────────────────────────
+              const tr=sorted.find(r=>String(r.roster_id)===String(teamId))||{};
+              const rk=rankings.find(r=>String(r.rid)===String(teamId))||{};
+              const color=rk.rank?rankColor(rk.rank,rankings.length):'#999';
+              // Weekly results for this team
+              const weeklyResults=(()=>{
+                const res=[];
+                (d.weeklyMx||[]).forEach((wData,wi)=>{
+                  if(!Array.isArray(wData))return;
+                  const mm={};wData.forEach(m=>{if(!mm[m.matchup_id])mm[m.matchup_id]=[];mm[m.matchup_id].push(m);});
+                  Object.values(mm).filter(p=>p.length===2).forEach(([a,b])=>{
+                    const mine=String(a.roster_id)===String(teamId)?a:String(b.roster_id)===String(teamId)?b:null;
+                    const opp=String(a.roster_id)===String(teamId)?b:String(b.roster_id)===String(teamId)?a:null;
+                    if(!mine||!opp||(!mine.points&&!opp.points))return;
+                    res.push({wk:wi+1,won:(mine.points||0)>(opp.points||0),myPts:mine.points||0,oppPts:opp.points||0,oppName:gN(opp.roster_id)});
+                  });
+                });
+                return res.sort((a,b)=>b.wk-a.wk);
+              })();
+              // Events involving this team
+              const teamEvents=feed.filter(e=>!e.isDraftPick&&!e.isStoryline&&!e.isAnnouncement&&(e.rosterIds||[]).map(String).includes(String(teamId)));
+              const teamEventsByWk={};teamEvents.forEach(e=>{const k=String(e.wk);if(!teamEventsByWk[k])teamEventsByWk[k]=[];teamEventsByWk[k].push(e);});
+              // Team draft picks
+              const teamPickEvents=feed.filter(e=>e.isDraftPick&&String(e.roster_id)===String(teamId)).sort((a,b)=>a.pick_no-b.pick_no);
+              const teamDraftEv=teamPickEvents.length?{picks:teamPickEvents}:null;
+              // All weeks
+              const allWks=[...new Set([...weeklyResults.map(r=>r.wk),...teamEvents.map(e=>e.wk).filter(w=>w>0)])].sort((a,b)=>b-a);
+              return(
+                <div>
+                  {/* Back button */}
+                  <button className="btn" style={{marginBottom:'1rem',fontSize:12}} onClick={()=>setTeamId(null)}>← All Teams</button>
+                  {/* Team header */}
+                  <div className="card cp" style={{marginBottom:'1rem',borderLeft:`5px solid ${color}`}}>
+                    <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+                      <Av avatar={tr.avatar} name={tr.teamName} size={52}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:22,fontWeight:900,letterSpacing:'-.03em'}}>{tr.teamName}</div>
+                        <div style={{fontSize:12,color:'var(--t3)',marginTop:2}}>{tr.dn}</div>
+                      </div>
+                      <div style={{display:'flex',gap:20,flexShrink:0}}>
+                        <div style={{textAlign:'center'}}>
+                          <div style={{fontSize:24,fontWeight:800}}>{tr.settings?.wins||0}-{tr.settings?.losses||0}</div>
+                          <div style={{fontSize:10,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.04em'}}>Record</div>
+                        </div>
+                        <div style={{textAlign:'center'}}>
+                          <div style={{fontSize:24,fontWeight:800}}>{rk.avg||'—'}</div>
+                          <div style={{fontSize:10,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.04em'}}>Avg PPG</div>
+                        </div>
+                        {rk.rank&&<div style={{textAlign:'center'}}>
+                          <div style={{fontSize:24,fontWeight:800,color}}>{rk.rank<900?`#${rk.rank}`:'—'}</div>
+                          <div style={{fontSize:10,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.04em'}}>Ranking</div>
+                        </div>}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Weekly results + events interleaved */}
+                  {allWks.map(wk=>{
+                    const result=weeklyResults.find(r=>r.wk===wk);
+                    const evts=(teamEventsByWk[String(wk)]||[]);
+                    return(
+                      <div key={wk}>
+                        <div className="wkdiv" style={{fontSize:11,fontWeight:800,color:'var(--t2)'}}>⚡ Week {wk}</div>
+                        {/* Result card */}
+                        {result&&(
+                          <div className="result-card" style={{marginBottom:8,borderLeft:`4px solid ${result.won?'#22c55e':'#ef4444'}`}}>
+                            <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px'}}>
+                              <div style={{width:40,height:40,borderRadius:10,background:result.won?'#f0fdf4':'#fef2f2',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                <span style={{fontSize:18}}>{result.won?'✅':'❌'}</span>
+                              </div>
+                              <div style={{flex:1}}>
+                                <div style={{fontSize:14,fontWeight:800,color:result.won?'var(--green)':'var(--red)'}}>{result.won?'WIN':'LOSS'}</div>
+                                <div style={{fontSize:12,color:'var(--t2)'}}>vs {result.oppName}</div>
+                              </div>
+                              <div style={{textAlign:'right'}}>
+                                <div style={{fontSize:20,fontWeight:800}}>{result.myPts.toFixed(2)}</div>
+                                <div style={{fontSize:11,color:'var(--t3)'}}>opp: {result.oppPts.toFixed(2)}</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {evts.map(e=>e.isTrade?<TradeFeedCard key={e.id} ev={e} players={players}/>:<ECard key={e.id} ev={e} players={players}/>)}
+                      </div>
+                    );
+                  })}
+                  {/* Team draft picks */}
+                  {teamDraftEv&&(
+                    <div>
+                      <div className="wkdiv" style={{fontSize:11,fontWeight:800,color:'var(--t2)'}}>📋 {d.league?.season} Draft Picks</div>
+                      <DraftSection ev={teamDraftEv} currentRosterOf={currentRosterOf} readOnly={true}/>
+                    </div>
+                  )}
+                  {allWks.length===0&&!teamDraftEv&&(
+                    <div className="card cp" style={{color:'var(--t3)',textAlign:'center'}}>No events yet for this team.</div>
+                  )}
+                </div>
+              );
+            })()}
+            </div>
+          </div>
+        )}
+
+        {/* RANKINGS — vertical full-width gradient cards */}
+        {view==='rankings'&&(
+          <div className="pg wide">
+            <div>
+              {prevSznLabel&&activeSzn===LEAGUE_ID&&(
+                <div style={{fontSize:12,color:'var(--t3)',marginBottom:'1rem',padding:'8px 12px',background:'var(--sf)',borderRadius:8,border:'.5px solid var(--bd)',display:'inline-block'}}>
+                  📅 Ranked by {prevSznLabel} final standings. Stats shown are current {d.league?.season} season.
+                </div>
+              )}
+              {rankings.map(t=>{
+                const color=rankColor(t.rank,rankings.length);
+                const streak=streaks.find(s=>String(s.rid)===String(t.rid));
+                return(
+                  <div key={t.rid} className="rkcard">
+                    <div className="rkcard-accent" style={{background:color}}/>
+                    <div className="rkcard-body">
+                      <div className="rkcard-top">
+                        <div className="rk-badge" style={{background:color}}>
+                          {t.rank}
+                        </div>
+                        <Av avatar={t.av} name={t.name} size={36}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:17,fontWeight:800,letterSpacing:'-.02em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</div>
+                          <div style={{fontSize:11,color:'var(--t3)'}}>{t.dn}{streak&&<span style={{marginLeft:6,...spStyle(streak.type),padding:'1px 6px',borderRadius:10,fontSize:10,fontWeight:600}}>{streak.sub}</span>}</div>
+                        </div>
+                      </div>
+                      <div className="rkcard-stats">
+                        <div className="rkstat"><span className="rkstat-lbl">Record</span><span className="rkstat-val">{t.wins}-{t.losses}</span></div>
+                        <div className="rkstat"><span className="rkstat-lbl">Avg PPG</span><span className="rkstat-val">{t.avg}</span></div>
+                        <div className="rkstat"><span className="rkstat-lbl">Last 3 wks</span><span className="rkstat-val">{t.l3}</span></div>
+                        {prevSznLabel&&activeSzn===LEAGUE_ID&&<div className="rkstat"><span className="rkstat-lbl">{prevSznLabel} finish</span><span className="rkstat-val" style={{fontSize:14}}>{t.prevRk<900?`#${t.prevRk}`:'New'}</span></div>}
+                      </div>
+                      {t.top3.length>0&&(
+                        <div style={{marginTop:8}}>
+                          <div style={{fontSize:10,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.04em',marginBottom:4}}>Top scorers this season</div>
+                          <div className="top3-row">
+                            {t.top3.map((p,i)=>(
+                              <div key={i} className="top3-pill">
+                                {players?p.name:<span style={{color:'var(--t3)'}}>…</span>} {p.pos&&<span style={{opacity:.6}}>{p.pos}</span>} <span style={{fontWeight:700}}>{p.pts}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {t.top3.length===0&&players&&<div style={{marginTop:6,fontSize:11,color:'var(--t3)'}}>No player scoring data yet this season.</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* STANDINGS */}
+        {view==='standings'&&(()=>{
+          const nTeams=(d.rosters||[]).length;
+          const playoffTeams=d.league?.settings?.playoff_teams||Math.ceil(nTeams/2);
+          const playoffWeekStart=d.league?.settings?.playoff_week_start||14;
+          // bye seeds = top 2 if 6+ team playoff, else 0
+          const byeTeams=playoffTeams>=6?2:playoffTeams>=4?2:0;
+          // compute last-5 for each team from weeklyMx
+          const last5=(rid)=>{
+            const res=[];
+            const weeks=[...(d.weeklyMx||[])].reverse();
+            for(const wData of weeks){
+              if(res.length>=5)break;
+              if(!Array.isArray(wData))continue;
+              const mm={};wData.forEach(m=>{if(!mm[m.matchup_id])mm[m.matchup_id]=[];mm[m.matchup_id].push(m);});
+              for(const pair of Object.values(mm).filter(p=>p.length===2)){
+                const [a,b]=pair;
+                if(!a.points&&!b.points)continue;
+                const mine=a.roster_id===rid?a:b.roster_id===rid?b:null;
+                const opp=a.roster_id===rid?b:b.roster_id===rid?a:null;
+                if(!mine)continue;
+                res.push((mine.points||0)>(opp?.points||0)?'W':'L');
+                break;
+              }
+            }
+            return res;
+          };
+          // zone config
+          const zones=[
+            {label:'First Round Bye',color:'#d97706',bg:'#fffbeb',textColor:'#92400e',from:1,to:byeTeams,icon:'🏆',show:byeTeams>0},
+            {label:'Playoff Bound',color:'#16a34a',bg:'#f0fdf4',textColor:'#14532d',from:byeTeams+1,to:playoffTeams,icon:'🎯',show:true},
+            {label:'On the Bubble',color:'#ea580c',bg:'#fff7ed',textColor:'#7c2d12',from:playoffTeams+1,to:Math.min(playoffTeams+2,nTeams),icon:'⚠️',show:nTeams>playoffTeams},
+            {label:'Eliminated',color:'#6b7280',bg:'#f9fafb',textColor:'#374151',from:playoffTeams+3,to:nTeams,icon:'💀',show:nTeams>playoffTeams+2},
+          ];
+          let lastZone=null;
+          return(
+            <div className="pg wide">
+              <div>
+                {/* Header card */}
+                <div className="card cp" style={{marginBottom:10,display:'flex',alignItems:'center',gap:'1.5rem',flexWrap:'wrap'}}>
+                  <div>
+                    <div style={{fontSize:16,fontWeight:800,marginBottom:2}}>Playoff Picture</div>
+                    <div style={{fontSize:12,color:'var(--t3)'}}>{d.league?.season} season · Top {playoffTeams} teams qualify · Playoffs begin Week {playoffWeekStart}</div>
+                  </div>
+                  <div style={{display:'flex',gap:'1rem',flexWrap:'wrap',marginLeft:'auto'}}>
+                    {byeTeams>0&&<div style={{display:'flex',alignItems:'center',gap:5,fontSize:12}}><span style={{width:10,height:10,borderRadius:2,background:'#d97706',display:'inline-block'}}/><span style={{color:'var(--t2)'}}>First round bye</span></div>}
+                    <div style={{display:'flex',alignItems:'center',gap:5,fontSize:12}}><span style={{width:10,height:10,borderRadius:2,background:'#16a34a',display:'inline-block'}}/><span style={{color:'var(--t2)'}}>In playoffs</span></div>
+                    <div style={{display:'flex',alignItems:'center',gap:5,fontSize:12}}><span style={{width:10,height:10,borderRadius:2,background:'#ea580c',display:'inline-block'}}/><span style={{color:'var(--t2)'}}>Bubble</span></div>
+                    <div style={{display:'flex',alignItems:'center',gap:5,fontSize:12}}><span style={{width:10,height:10,borderRadius:2,background:'#9ca3af',display:'inline-block'}}/><span style={{color:'var(--t2)'}}>Eliminated</span></div>
+                  </div>
+                </div>
+                {sorted.map((r,i)=>{
+                  const seed=i+1;
+                  const zone=zones.find(z=>z.show&&seed>=z.from&&seed<=z.to)||zones[zones.length-1];
+                  const showDivider=zone&&zone.label!==lastZone;
+                  if(showDivider)lastZone=zone.label;
+                  const pts=((r.settings?.fpts||0)+(r.settings?.fpts_decimal||0)/100).toFixed(1);
+                  const pa=((r.settings?.fpts_against||0)+(r.settings?.fpts_against_decimal||0)/100).toFixed(1);
+                  const w=r.settings?.wins||0,l=r.settings?.losses||0;
+                  const gb=sorted[0]?(sorted[0].settings?.wins||0)-w:0;
+                  const l5=last5(r.roster_id);
+                  const streak=streaks.find(s=>String(s.rid)===String(r.roster_id));
+                  return(
+                    <React.Fragment key={r.roster_id}>
+                      {showDivider&&(
+                        <div style={{display:'flex',alignItems:'center',gap:8,margin:'12px 0 6px',padding:'6px 14px',background:zone.bg,borderRadius:8,border:`1px solid ${zone.color}22`}}>
+                          <span style={{fontSize:12}}>{zone.icon}</span>
+                          <span style={{fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:zone.color}}>{zone.label}</span>
+                          <div style={{flex:1,height:'1px',background:`${zone.color}30`,marginLeft:4}}/>
+                        </div>
+                      )}
+                      <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',background:'var(--sf)',borderRadius:10,marginBottom:5,border:`.5px solid var(--bd)`,boxShadow:'var(--shadow)',borderLeft:`4px solid ${zone.color}`}}>
+                        {/* Seed */}
+                        <div style={{width:28,height:28,borderRadius:8,background:zone.bg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                          <span style={{fontSize:13,fontWeight:800,color:zone.color}}>{seed}</span>
+                        </div>
+                        <Av avatar={r.avatar} name={r.teamName} size={34}/>
+                        {/* Name + streak */}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:16,fontWeight:800,letterSpacing:'-.02em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.teamName}</div>
+                          <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2,flexWrap:'wrap'}}>
+                            <span style={{fontSize:11,color:'var(--t3)'}}>{r.dn}</span>
+                            {streak&&<span style={{fontSize:10,fontWeight:700,padding:'1px 7px',borderRadius:20,...spStyle(streak.type)}}>{streak.sub}</span>}
+                          </div>
+                        </div>
+                        {/* Last 5 */}
+                        <div style={{display:'flex',gap:3,flexShrink:0}}>
+                          {l5.map((res,ri)=>(
+                            <div key={ri} style={{width:18,height:18,borderRadius:4,background:res==='W'?'#dcfce7':'#fee2e2',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                              <span style={{fontSize:9,fontWeight:800,color:res==='W'?'#16a34a':'#dc2626'}}>{res}</span>
+                            </div>
+                          ))}
+                          {l5.length===0&&<span style={{fontSize:11,color:'var(--t3)'}}>—</span>}
+                        </div>
+                        {/* Record + stats */}
+                        <div style={{textAlign:'right',flexShrink:0,minWidth:90}}>
+                          <div style={{fontSize:16,fontWeight:800}}>{w}-{l}</div>
+                          <div style={{fontSize:11,color:'var(--t3)'}}>{pts} PF · {pa} PA</div>
+                          {gb>0&&<div style={{fontSize:10,color:'var(--t3)'}}>GB: {gb}</div>}
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
+                <div style={{marginTop:10,fontSize:11,color:'var(--t3)'}}>GB = games back from first place. L5 = last 5 results.</div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* MATCHUPS */}
+        {view==='matchups'&&(
+          <div className="pg wide">
+            <div>
+              {wkBar(effectiveMxWk,setMxWk)}
+              {(()=>{
+                // compute league avg for this week to show +/-
+                const allPts=(d.weeklyMx||[])[effectiveMxWk-1]?.filter(m=>m.points>0).map(m=>m.points)||[];
+                const lgAvg=allPts.length?allPts.reduce((a,b)=>a+b,0)/allPts.length:0;
+                const top3=(m)=>{
+                  const pp=m.players_points||{};
+                  const starters=new Set(m.starters||[]);
+                  // use players_points filtered to starters, fallback to starters_points array
+                  let scored=[];
+                  if(Object.keys(pp).length>0){
+                    scored=Object.entries(pp).filter(([pid,pts])=>starters.has(pid)&&pts>0).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([pid,pts])=>{const f=rFull(pid);return{...f,pts};});
+                  }else if(m.starters&&m.starters_points){
+                    scored=m.starters.map((pid,i)=>({pid,pts:m.starters_points[i]||0})).filter(x=>x.pts>0).sort((a,b)=>b.pts-a.pts).slice(0,3).map(x=>{const f=rFull(x.pid);return{...f,pts:x.pts};});
+                  }
+                  return scored;
+                };
+                if(mxPairs.length===0)return<div className="card cp" style={{color:'var(--t3)'}}>No matchup data.</div>;
+                return mxPairs.map(([a,b],i)=>{
+                  const aW=(a.points||0)>(b.points||0),bW=(b.points||0)>(a.points||0);
+                  const aVsAvg=lgAvg>0?((a.points||0)-lgAvg):null;
+                  const bVsAvg=lgAvg>0?((b.points||0)-lgAvg):null;
+                  const aTop=top3(a),bTop=top3(b);
+                  // H2H record
+                  const aOwner=(rMap[a.roster_id]||{}).owner_id;
+                  const bOwner=(rMap[b.roster_id]||{}).owner_id;
+                  const h2hKey=aOwner&&bOwner?[aOwner,bOwner].sort().join('::'):null;
+                  const h2h=h2hKey?h2hRecords[h2hKey]:null;
+                  const aW2h=h2h?.[aOwner]||0,bW2h=h2h?.[bOwner]||0;
+                  const h2hTotal=aW2h+bW2h;
+                  return(
+                    <div key={i} className="card" style={{marginBottom:10,overflow:'hidden'}}>
+                      {/* Score bar */}
+                      <div style={{display:'flex',alignItems:'stretch',borderBottom:'.5px solid var(--bd)'}}>
+                        {/* Team A */}
+                        <div style={{flex:1,padding:'14px 16px'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                            <Av avatar={a.av} name={a.tname} size={26}/>
+                            <span style={{fontSize:15,fontWeight:800,letterSpacing:'-.01em',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.tname}</span>
+                            {aW&&<span style={{fontSize:10,fontWeight:700,background:'#f0fdf4',color:'#16a34a',padding:'1px 7px',borderRadius:20}}>WIN</span>}
+                          </div>
+                          <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                            <span style={{fontSize:32,fontWeight:800,color:aW?'var(--tx)':'#bbb',lineHeight:1}}>{(a.points||0).toFixed(2)}</span>
+                            {aVsAvg!==null&&a.points>0&&<span style={{fontSize:12,fontWeight:600,color:aVsAvg>=0?'var(--green)':'var(--red)'}}>{aVsAvg>=0?'+':''}{aVsAvg.toFixed(1)} vs avg</span>}
+                          </div>
+                        </div>
+                        {/* VS divider */}
+                        <div style={{display:'flex',alignItems:'center',padding:'0 12px',color:'#ddd',fontSize:11,fontWeight:800,flexShrink:0}}>VS</div>
+                        {/* Team B */}
+                        <div style={{flex:1,padding:'14px 16px',textAlign:'right'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,justifyContent:'flex-end'}}>
+                            {bW&&<span style={{fontSize:10,fontWeight:700,background:'#f0fdf4',color:'#16a34a',padding:'1px 7px',borderRadius:20}}>WIN</span>}
+                            <span style={{fontSize:15,fontWeight:800,letterSpacing:'-.01em',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'right'}}>{b.tname}</span>
+                            <Av avatar={b.av} name={b.tname} size={26}/>
+                          </div>
+                          <div style={{display:'flex',alignItems:'baseline',gap:8,justifyContent:'flex-end'}}>
+                            {bVsAvg!==null&&b.points>0&&<span style={{fontSize:12,fontWeight:600,color:bVsAvg>=0?'var(--green)':'var(--red)'}}>{bVsAvg>=0?'+':''}{bVsAvg.toFixed(1)} vs avg</span>}
+                            <span style={{fontSize:32,fontWeight:800,color:bW?'var(--tx)':'#bbb',lineHeight:1}}>{(b.points||0).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Top scorers row */}
+                      {(aTop.length>0||bTop.length>0)&&(
+                        <div style={{display:'flex',background:'#fafaf9'}}>
+                          {/* A top scorers */}
+                          <div style={{flex:1,padding:'10px 16px',borderRight:'.5px solid var(--bd)'}}>
+                            {aTop.length>0&&<div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.05em',color:'var(--t3)',marginBottom:6}}>Top scorers</div>}
+                            {aTop.map((p,pi)=>(
+                              <div key={pi} style={{display:'flex',alignItems:'center',gap:6,marginBottom:pi<aTop.length-1?4:0}}>
+                                <span style={{fontSize:11,fontWeight:800,color:pi===0?'#d97706':pi===1?'#6b7280':'#aaa',width:14,flexShrink:0}}>{pi===0?'①':pi===1?'②':'③'}</span>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{fontSize:12,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{players?p.name:<span style={{color:'var(--t3)'}}>…</span>}</div>
+                                  {p.pos&&<div style={{fontSize:10,color:'var(--t3)'}}>{p.pos}{p.team?` · ${p.team}`:''}</div>}
+                                </div>
+                                <span style={{fontSize:13,fontWeight:800,flexShrink:0,color:pi===0?'var(--amber)':'var(--t2)'}}>{typeof p.pts==='number'?p.pts.toFixed(1):p.pts}</span>
+                              </div>
+                            ))}
+                            {aTop.length===0&&a.points>0&&<div style={{fontSize:11,color:'var(--t3)'}}>Player data loading…</div>}
+                          </div>
+                          {/* B top scorers */}
+                          <div style={{flex:1,padding:'10px 16px'}}>
+                            {bTop.length>0&&<div style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.05em',color:'var(--t3)',marginBottom:6}}>Top scorers</div>}
+                            {bTop.map((p,pi)=>(
+                              <div key={pi} style={{display:'flex',alignItems:'center',gap:6,marginBottom:pi<bTop.length-1?4:0}}>
+                                <span style={{fontSize:11,fontWeight:800,color:pi===0?'#d97706':pi===1?'#6b7280':'#aaa',width:14,flexShrink:0}}>{pi===0?'①':pi===1?'②':'③'}</span>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{fontSize:12,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{players?p.name:<span style={{color:'var(--t3)'}}>…</span>}</div>
+                                  {p.pos&&<div style={{fontSize:10,color:'var(--t3)'}}>{p.pos}{p.team?` · ${p.team}`:''}</div>}
+                                </div>
+                                <span style={{fontSize:13,fontWeight:800,flexShrink:0,color:pi===0?'var(--amber)':'var(--t2)'}}>{typeof p.pts==='number'?p.pts.toFixed(1):p.pts}</span>
+                              </div>
+                            ))}
+                            {bTop.length===0&&b.points>0&&<div style={{fontSize:11,color:'var(--t3)'}}>Player data loading…</div>}
+                          </div>
+                        </div>
+                      )}
+                      {/* All-time series */}
+                      {h2hTotal>0&&(
+                        <div style={{padding:'8px 16px',background:'#f5f4f2',borderTop:'.5px solid var(--bd)',display:'flex',alignItems:'center',justifyContent:'center',gap:10}}>
+                          <span style={{fontSize:13,fontWeight:800,color:aW2h>=bW2h?'var(--tx)':'var(--t3)'}}>{a.tname} {aW2h}</span>
+                          <span style={{fontSize:10,fontWeight:700,color:'var(--t3)',letterSpacing:'.06em',textTransform:'uppercase'}}>All-time series</span>
+                          <span style={{fontSize:13,fontWeight:800,color:bW2h>=aW2h?'var(--tx)':'var(--t3)'}}>{bW2h} {b.tname}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* TRANSACTIONS */}
+        {view==='transactions'&&(
+          <div className="pg wide">
+            <div>
+              {wkBar(effectiveTxWk,setTxWk)}
+              {curTx.length===0?<div className="card cp" style={{color:'var(--t3)'}}>No transactions week {effectiveTxWk}.</div>
+              :curTx.map((t,i)=>{
+                const isTrade=t.type==='trade';
+                const ts=fmtTs(t.status_updated||t.created);
+                const faab=t.settings?.waiver_bid;
+                const adds=Object.keys(t.adds||{});
+                const drops=Object.keys(t.drops||{});
+
+                if(isTrade){
+                  const groups=buildTradeReceives(t);
+                  const groupA=groups[0],groupB=groups[1];
+                  if(!groupA||!groupB) return null;
+
+                  const renderPlayer=(pid)=>{
+                    const{name,pos,team}=rFull(pid);
+                    return(
+                      <div key={pid} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'.5px solid rgba(0,0,0,.05)'}}>
+                        <PlayerPhoto playerId={pid} name={name} pos={pos} size={36} bg='#1e293b' accent='#64748b'
+                          style={{borderRadius:8,flexShrink:0}}/>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{players?name:<span style={{color:'var(--t3)'}}>…</span>}</div>
+                          {pos&&<div style={{fontSize:10,color:'var(--t3)'}}>{pos}{team?` · ${team}`:''}</div>}
+                        </div>
+                      </div>
+                    );
+                  };
+
+                  const renderPick=(pk,pi)=>{
+                    const dp2=resolvePick(pk);
+                    const fut=parseInt(pk.season)>parseInt(d.league?.season||'0');
+                    return(
+                      <div key={pi} style={{display:'flex',alignItems:'flex-start',gap:8,padding:'7px 0',borderBottom:'.5px solid rgba(0,0,0,.05)'}}>
+                        <div style={{width:36,height:36,borderRadius:8,background:'var(--bbg)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                          <span style={{fontSize:9,fontWeight:800,color:'var(--blue)',lineHeight:1,letterSpacing:'.02em'}}>RD</span>
+                          <span style={{fontSize:16,fontWeight:800,color:'var(--blue)',lineHeight:1}}>{pk.round}</span>
+                        </div>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:700,color:'var(--blue)'}}>{pk.season} · Round {pk.round}</div>
+                          {pk.orig&&<div style={{fontSize:11,color:'var(--t3)'}}>orig. {pk.orig}</div>}
+                          {dp2
+                            ?<div style={{fontSize:11,color:'var(--green)',fontWeight:700,marginTop:1}}>→ {dp2.name}{dp2.pos?` (${dp2.pos})`:''}</div>
+                            :!fut&&<div style={{fontSize:10,color:'var(--t3)',marginTop:1,fontStyle:'italic'}}>not yet used</div>
+                          }
+                        </div>
+                      </div>
+                    );
+                  };
+
+                  const TradeCol=({group})=>(
+                    <div style={{padding:'14px 16px'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10,paddingBottom:10,borderBottom:'.5px solid var(--bd)'}}>
+                        <Av avatar={group.av} name={group.name} size={30}/>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:16,fontWeight:800,letterSpacing:'-.02em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{group.name}</div>
+                          <div style={{fontSize:10,color:'var(--t3)',fontWeight:600,textTransform:'uppercase',letterSpacing:'.04em'}}>receives</div>
+                        </div>
+                      </div>
+                      {group.gets.pl.map(pid=>renderPlayer(pid))}
+                      {group.gets.pk.map((pk,pi)=>renderPick(pk,pi))}
+                      {group.gets.pl.length===0&&group.gets.pk.length===0&&(
+                        <div style={{fontSize:11,color:'var(--t3)',fontStyle:'italic',padding:'6px 0'}}>Nothing listed</div>
+                      )}
+                    </div>
+                  );
+
+                  return(
+                    <div key={i} className="card" style={{marginBottom:10,overflow:'hidden'}}>
+                      <div style={{padding:'10px 16px 9px',borderBottom:'.5px solid var(--bd)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',background:'#fafaf9'}}>
+                        <span style={{fontSize:10,fontWeight:800,padding:'2px 9px',borderRadius:20,background:'#f0ebff',color:'#7c3aed',letterSpacing:'.04em'}}>TRADE</span>
+                        {ts&&<span style={{fontSize:11,color:'var(--t3)'}}>{ts}</span>}
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr'}}>
+                        <TradeCol group={groupA}/>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:'0 10px',color:'#ccc',fontSize:22}}>⇄</div>
+                        <div style={{borderLeft:'.5px solid var(--bd)'}}><TradeCol group={groupB}/></div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Waiver / Free Agent
+                return(
+                  <div key={i} className="card" style={{marginBottom:10,overflow:'hidden',borderLeft:`4px solid ${t.type==='waiver'?'#f59e0b':'#22c55e'}`}}>
+                    <div style={{padding:'10px 16px 8px',borderBottom:'.5px solid var(--bd)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',background:'#fafaf9'}}>
+                      <span style={{fontSize:10,fontWeight:800,padding:'2px 9px',borderRadius:20,background:t.type==='waiver'?'#fffbeb':'#f0fdf4',color:t.type==='waiver'?'#d97706':'#16a34a',letterSpacing:'.04em'}}>{t.type==='waiver'?'WAIVER':'FREE AGENT'}</span>
+                      {faab!=null&&<span style={{fontSize:10,fontWeight:700,background:'#fffbeb',color:'#d97706',padding:'2px 7px',borderRadius:20}}>${faab} FAAB</span>}
+                      {ts&&<span style={{fontSize:11,color:'var(--t3)'}}>{ts}</span>}
+                    </div>
+                    <div style={{padding:'12px 16px'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                        <Av avatar={gU(t.roster_ids?.[0]).avatar} name={gN(t.roster_ids?.[0])} size={24}/>
+                        <span style={{fontSize:15,fontWeight:800,letterSpacing:'-.01em'}}>{gN(t.roster_ids?.[0])}</span>
+                      </div>
+                      {adds.map(pid=>{const{name,pos,team}=rFull(pid);const espnId=players?.[pid]?.espn_id||null;return(
+                        <div key={pid} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,padding:'6px 0',borderBottom:'.5px solid rgba(0,0,0,.05)'}}>
+                          <PlayerPhoto playerId={pid} espnId={espnId} name={name} pos={pos} size={38}
+                            style={{borderRadius:8,flexShrink:0}} bg='#14532d' accent='#22c55e'/>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:'flex',alignItems:'center',gap:5}}>
+                              <span style={{fontSize:12,color:'var(--green)',fontWeight:800}}>+</span>
+                              <div style={{fontSize:13,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{players?name:'…'}</div>
+                            </div>
+                            {pos&&<div style={{fontSize:10,color:'var(--t3)'}}>{pos}{team?` · ${team}`:''}</div>}
+                          </div>
+                        </div>
+                      );})}
+                      {drops.map(pid=>{const{name,pos,team}=rFull(pid);const espnId=players?.[pid]?.espn_id||null;return(
+                        <div key={pid} style={{display:'flex',alignItems:'center',gap:8,marginBottom:4,padding:'6px 0'}}>
+                          <PlayerPhoto playerId={pid} espnId={espnId} name={name} pos={pos} size={38}
+                            style={{borderRadius:8,flexShrink:0,opacity:.55}} bg='#7f1d1d' accent='#ef4444'/>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:'flex',alignItems:'center',gap:5}}>
+                              <span style={{fontSize:12,color:'var(--red)',fontWeight:800}}>−</span>
+                              <div style={{fontSize:12,color:'var(--t2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{players?name:'…'}{pos?<span style={{color:'var(--t3)'}}> ({pos})</span>:''}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );})}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* DRAFT — team-centric cards, grouped by actual drafter */}
+        {view==='draft'&&(
+          <div className="pg wide">
+            <div>
+              {!draftTeams?<div className="card cp" style={{color:'var(--t3)',display:'flex',gap:8,alignItems:'center'}}><Spin s={16}/>Loading draft…</div>
+              :<div>
+                <div className="card cp" style={{marginBottom:10}}>
+                  <div style={{fontSize:15,fontWeight:700,marginBottom:2}}>{d.draftData?.season} Draft</div>
+                  <div style={{fontSize:12,color:'var(--t3)'}}>{d.draftData?.type} · {d.draftData?.settings?.rounds} rounds · {d.draftData?.settings?.teams} teams{d.draftData?.status==='complete'?' · Complete':''}</div>
+                  <div style={{fontSize:11,color:'var(--t3)',marginTop:4}}>Organized by actual drafter. Blue highlight = player has since been traded.</div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:'10px'}}>
+                  {draftTeams.map(team=>(
+                    <div key={team.rid} className="draft-team-card">
+                      <div className="draft-team-hdr">
+                        <Av avatar={team.avatar} name={team.teamName} size={30}/>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:15,fontWeight:800,letterSpacing:'-.01em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{team.teamName}</div>
+                          <div style={{fontSize:10,color:'var(--t3)'}}>{team.picks.length} picks</div>
+                        </div>
+                      </div>
+                      {team.picks.length===0?<div style={{fontSize:11,color:'var(--t3)'}}>No picks recorded.</div>
+                      :team.picks.map((pick,pi)=>{
+                        const m=pick.metadata||{};
+                        const name=`${m.first_name||''} ${m.last_name||''}`.trim()||pick.player_id;
+                        const crid=team.pcr[String(pick.player_id)];
+                        const traded=crid&&String(crid)!==String(team.rid);
+                        return(
+                          <div key={pi} className="draft-pick-row" style={{background:traded?'#eff6ff':'inherit',marginLeft:'-1px',marginRight:'-1px',paddingLeft:'4px',paddingRight:'4px',borderRadius:4}}>
+                            <span className="draft-rnd">Rd {pick.round}</span>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:12,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</div>
+                              <div style={{display:'flex',gap:4,alignItems:'center',flexWrap:'wrap'}}>
+                                {m.position&&<span style={{fontSize:10,color:'var(--t3)'}}>{m.position}{m.team?` · ${m.team}`:''}</span>}
+                                {traded&&<span style={{fontSize:10,color:'var(--blue)',fontWeight:600}}>→ {gN(crid)}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>}
+            </div>
+          </div>
+        )}
+
+        {/* HISTORY */}
+        {view==='history'&&(
+          <div className="pg wide">
+            <div>
+              {loadingSzns.size>0&&(
+                <div style={{display:'flex',alignItems:'center',gap:8,color:'var(--t3)',fontSize:13,marginBottom:'1rem'}}>
+                  <Spin s={16}/>Loading season history…
+                </div>
+              )}
+
+              {/* All-time standings with playoff records */}
+              <div className="card cp" style={{marginBottom:10,overflowX:'auto'}}>
+                <div style={{fontSize:16,fontWeight:800,marginBottom:'.75rem'}}>🏅 All-Time Standings</div>
+                {leagueHistory.standings.length===0
+                  ?<div style={{color:'var(--t3)',fontSize:13}}>Click the History tab to load season data.</div>
+                  :<table className="hist-table">
+                    <thead>
+                      <tr>
+                        <th>#</th><th>Team</th>
+                        <th>W</th><th>L</th><th>Win%</th>
+                        <th>Total PF</th>
+                        <th>PO Apps</th><th>PO W-L</th>
+                        <th>Seasons</th><th>🏆</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leagueHistory.standings.map((t,i)=>{
+                        const tot=t.wins+t.losses;
+                        const color=rankColor(i+1,leagueHistory.standings.length);
+                        const poRec=t.playoffWins+t.playoffLosses>0?`${t.playoffWins}-${t.playoffLosses}`:'—';
+                        const poColor=t.playoffWins>t.playoffLosses?'var(--green)':t.playoffLosses>t.playoffWins?'var(--red)':'var(--t2)';
+                        return(
+                          <tr key={t.oid||i}>
+                            <td><div style={{width:24,height:24,borderRadius:6,background:color,display:'flex',alignItems:'center',justifyContent:'center'}}><span style={{fontSize:11,fontWeight:800,color:'#fff'}}>{i+1}</span></div></td>
+                            <td style={{fontWeight:700,whiteSpace:'nowrap'}}>{t.name}</td>
+                            <td style={{fontWeight:700,color:'var(--green)'}}>{t.wins}</td>
+                            <td style={{color:'var(--t2)'}}>{t.losses}</td>
+                            <td style={{fontWeight:600}}>{tot>0?((t.wins/tot)*100).toFixed(0)+'%':'—'}</td>
+                            <td style={{fontWeight:600}}>{t.pf.toFixed(1)}</td>
+                            <td style={{color:'var(--t3)',textAlign:'center'}}>{t.playoffApps||'—'}</td>
+                            <td style={{fontWeight:600,color:poColor,textAlign:'center'}}>{poRec}</td>
+                            <td style={{color:'var(--t3)',textAlign:'center'}}>{t.seasons}</td>
+                            <td style={{textAlign:'center'}}>{t.championships>0?<span style={{fontSize:15}}>{'🏆'.repeat(Math.min(t.championships,5))}</span>:'—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                }
+              </div>
+
+              {/* Champions showcase */}
+              {leagueHistory.seasons.filter(s=>s.complete).length>0&&(
+                <div className="card cp">
+                  <div style={{fontSize:16,fontWeight:800,marginBottom:'1rem'}}>🏆 Hall of Champions</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:10}}>
+                    {leagueHistory.seasons.filter(s=>s.complete).map((s,i)=>{
+                      // Find champion's owner in standings for avatar
+                      const champEntry=leagueHistory.standings.find(t=>t.oid===s.champOwnerId);
+                      const champs=leagueHistory.standings.filter(t=>t.oid===s.champOwnerId);
+                      const champColor=champs.length?rankColor(leagueHistory.standings.indexOf(champs[0])+1,leagueHistory.standings.length):'#d97706';
+                      return(
+                        <div key={s.id} style={{
+                          flex:'1 1 160px',minWidth:140,maxWidth:200,
+                          background:`linear-gradient(145deg,${champColor}15 0%,var(--sf) 100%)`,
+                          border:`1px solid ${champColor}30`,
+                          borderRadius:'var(--rl)',padding:'1rem',
+                          textAlign:'center',position:'relative',overflow:'hidden'
+                        }}>
+                          <div style={{position:'absolute',top:-8,right:-8,fontSize:52,opacity:.07,lineHeight:1}}>🏆</div>
+                          <div style={{fontSize:28,marginBottom:4}}>🏆</div>
+                          <div style={{fontSize:22,fontWeight:900,letterSpacing:'-.03em',color:champColor,lineHeight:1,marginBottom:4}}>{s.season}</div>
+                          <div style={{fontSize:13,fontWeight:800,color:'var(--tx)',lineHeight:1.3}}>{s.champion}</div>
+                          <button className="btn" style={{fontSize:10,padding:'2px 8px',height:'auto',marginTop:8}}
+                            onClick={()=>{setActiveSzn(s.id);setView('feed');}}>
+                            View Season
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {leagueHistory.seasons.some(s=>!s.complete)&&(
+                    <div style={{marginTop:12,padding:'8px 12px',background:'var(--bg)',borderRadius:8,display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:14}}>👑</span>
+                      <span style={{fontSize:12,color:'var(--t3)'}}>
+                        {leagueHistory.seasons.find(s=>!s.complete)?.season} season in progress — champion to be crowned
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {leagueHistory.standings.length>0&&leagueHistory.seasons.filter(s=>s.complete).length===0&&(
+                <div className="card cp" style={{textAlign:'center',color:'var(--t3)'}}>
+                  <div style={{fontSize:24,marginBottom:8}}>🏆</div>
+                  No completed seasons yet — the first champion is still to be crowned.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* NEWSLETTER */}
+        {view==='newsletter'&&(
+          <div className="pg wide">
+            <div>
+              <div className="card cp" style={{marginBottom:8}}>
+                <div style={{fontSize:13,fontWeight:700,marginBottom:3}}>Anthropic API Key</div>
+                <div style={{fontSize:11,color:'var(--t3)',marginBottom:10,lineHeight:1.6}}>Required. Get one free at <a href="https://console.anthropic.com" target="_blank" style={{color:'var(--blue)'}}>console.anthropic.com</a> → API Keys. ~$0.01 per newsletter, saved in your browser.</div>
+                <div style={{display:'flex',gap:6}}>
+                  <input className="inpp" type={showK?'text':'password'} placeholder="sk-ant-..." value={apiKey} onChange={e=>saveK(e.target.value)}/>
+                  <button className="btn" onClick={()=>setShowK(s=>!s)}>{showK?'Hide':'Show'}</button>
+                  <button className="btn dk" onClick={genNl} disabled={nlLoading||!apiKey.trim()}>{nlLoading?'Writing…':'Generate'}</button>
+                </div>
+              </div>
+              {nlLoading&&<div style={{display:'flex',gap:8,alignItems:'center',color:'var(--t3)',fontSize:13,padding:'.75rem 0'}}><Spin s={16}/>Writing with full context…</div>}
+              {nletter==='__NK__'&&<div style={{color:'var(--amber)',fontSize:12}}>Enter your API key above.</div>}
+              {nletter&&nletter!=='__NK__'&&!nlLoading&&(
+                <div>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                    <span style={{fontSize:11,color:'var(--t3)'}}>Week {curWk} newsletter</span>
+                    <button className="btn" style={{fontSize:11,padding:'2px 9px',height:'auto'}} onClick={()=>{try{navigator.clipboard.writeText(nletter)}catch{}}}>Copy</button>
+                  </div>
+                  <div className="card cp" style={{fontSize:13,lineHeight:1.85,whiteSpace:'pre-wrap'}}>{nletter}</div>
+                </div>
+              )}
+              {!nletter&&!nlLoading&&<div className="card cp" style={{color:'var(--t3)',fontSize:13,textAlign:'center'}}>Generates from standings, all {curWk} weeks, active streaks, power rankings, and transactions.</div>}
+            </div>
+          </div>
+        )}
+        </>
+      )}
+
+      <nav className="mnav">
+        <div className="mnav-r">
+          {NAV.map(n=>(
+            <button key={n.id} className={`mnb${view===n.id?' on':''}`} onClick={()=>{setView(n.id);if(n.id!=='teams')setTeamId(null);}}>
+              <span className="ico">{n.icon}</span>
+              <span>{n.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
