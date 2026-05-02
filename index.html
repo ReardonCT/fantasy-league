@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fantasy Football Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f4;
+      --bg3: #eeede9;
+      --text: #1a1a18;
+      --text2: #6b6b67;
+      --text3: #9c9c97;
+      --border: rgba(0,0,0,0.12);
+      --border2: rgba(0,0,0,0.22);
+      --radius: 8px;
+      --radius-lg: 12px;
+      --success-bg: #eaf3de;
+      --success-text: #3b6d11;
+      --danger-bg: #fcebeb;
+      --danger-text: #a32d2d;
+      --info-bg: #e6f1fb;
+      --info-text: #185fa5;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a;
+        --bg2: #252523;
+        --bg3: #2e2e2b;
+        --text: #f0efeb;
+        --text2: #9c9c97;
+        --text3: #6b6b67;
+        --border: rgba(255,255,255,0.10);
+        --border2: rgba(255,255,255,0.18);
+        --success-bg: #173404;
+        --success-text: #c0dd97;
+        --danger-bg: #501313;
+        --danger-text: #f7c1c1;
+        --info-bg: #042c53;
+        --info-text: #b5d4f4;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg3);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    #root {
+      max-width: 700px;
+      margin: 0 auto;
+      background: var(--bg);
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--border);
+      padding: 1.5rem 2rem 2rem;
+    }
+
+    input[type="text"] {
+      background: var(--bg2);
+      border: 0.5px solid var(--border2);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 14px;
+      padding: 8px 12px;
+      height: 36px;
+      outline: none;
+      font-family: inherit;
+      width: 100%;
+    }
+    input[type="text"]:focus { border-color: var(--text2); }
+
+    button {
+      background: none;
+      border: 0.5px solid var(--border2);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      padding: 6px 14px;
+      height: 36px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:hover { background: var(--bg2); }
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--text);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const {useState,useCallback}=React;
+const BASE='https://api.sleeper.app/v1';
+const get=url=>fetch(url).then(r=>r.json());
+
+const Spin=({size=14})=><div className="spin" style={{width:size,height:size}}/>;
+
+const Avatar=({avatar,name,size=32})=>{
+  const [err,setErr]=useState(false);
+  return(
+    <div style={{width:size,height:size,borderRadius:'50%',background:'var(--bg2)',flexShrink:0,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',fontSize:Math.floor(size*.35)+'px',color:'var(--text2)',fontWeight:'500'}}>
+      {avatar&&!err
+        ?<img src={`https://sleepercdn.com/avatars/thumbs/${avatar}`} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
+        :(name||'??').slice(0,2).toUpperCase()}
+    </div>
+  );
+};
+
+const Badge=({children,type='info'})=>(
+  <span style={{fontSize:'11px',padding:'2px 8px',borderRadius:'var(--radius)',background:`var(--${type}-bg)`,color:`var(--${type}-text)`,fontWeight:'500',flexShrink:0}}>
+    {children}
+  </span>
+);
+
+const StatCard=({label,value,sub})=>(
+  <div style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'12px 14px'}}>
+    <p style={{margin:'0 0 4px',fontSize:'12px',color:'var(--text2)'}}>{label}</p>
+    <p style={{margin:'0 0 2px',fontSize:'18px',fontWeight:'500'}}>{value}</p>
+    {sub&&<p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{sub}</p>}
+  </div>
+);
+
+function App(){
+  const [leagueId,setLeagueId]=useState('');
+  const [loaded,setLoaded]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const [error,setError]=useState(null);
+  const [tab,setTab]=useState('standings');
+  const [league,setLeague]=useState(null);
+  const [users,setUsers]=useState([]);
+  const [rosters,setRosters]=useState([]);
+  const [nflState,setNflState]=useState(null);
+  const [week,setWeek]=useState(1);
+  const [maxWeek,setMaxWeek]=useState(1);
+  const [matchups,setMatchups]=useState([]);
+  const [transactions,setTransactions]=useState([]);
+  const [weekLoading,setWeekLoading]=useState(false);
+  const [seasonData,setSeasonData]=useState(null);
+  const [seasonLoading,setSeasonLoading]=useState(false);
+  const [players,setPlayers]=useState(null);
+  const [playersLoading,setPlayersLoading]=useState(false);
+  const [newsletter,setNewsletter]=useState('');
+  const [genLoading,setGenLoading]=useState(false);
+
+  const loadPlayers=useCallback(async()=>{
+    setPlayersLoading(true);
+    try{ setPlayers(await get(`${BASE}/players/nfl`)); }
+    catch{ setPlayers({}); }
+    finally{ setPlayersLoading(false); }
+  },[]);
+
+  const loadWeek=useCallback(async(id,w)=>{
+    setWeekLoading(true);
+    try{
+      const [mx,tx]=await Promise.all([
+        get(`${BASE}/league/${id}/matchups/${w}`),
+        get(`${BASE}/league/${id}/transactions/${w}`)
+      ]);
+      setMatchups(Array.isArray(mx)?mx:[]);
+      setTransactions(Array.isArray(tx)?tx:[]);
+    }finally{setWeekLoading(false);}
+  },[]);
+
+  const loadSeason=useCallback(async(id,max,ros,usrs)=>{
+    setSeasonLoading(true);
+    const allWeeks=await Promise.all(
+      Array.from({length:max},(_,i)=>get(`${BASE}/league/${id}/matchups/${i+1}`).catch(()=>[]))
+    );
+    const userMap={};usrs.forEach(u=>{userMap[u.user_id]=u;});
+    const rosterMap={};ros.forEach(r=>{rosterMap[r.roster_id]=r;});
+    const teamStats={};
+    ros.forEach(r=>{
+      const u=userMap[r.owner_id]||{};
+      teamStats[r.roster_id]={
+        name:u.metadata?.team_name||u.display_name||'?',
+        displayName:u.display_name||'—',avatar:u.avatar,
+        scores:[],total:0,wins:r.settings?.wins||0,losses:r.settings?.losses||0
+      };
+    });
+    const allMatchups=[];
+    allWeeks.forEach((wData,wi)=>{
+      if(!Array.isArray(wData))return;
+      const mxMap={};
+      wData.forEach(m=>{if(!mxMap[m.matchup_id])mxMap[m.matchup_id]=[];mxMap[m.matchup_id].push(m);});
+      Object.values(mxMap).filter(p=>p.length===2).forEach(([a,b])=>{
+        if(!a.points&&!b.points)return;
+        const ta=teamStats[a.roster_id],tb=teamStats[b.roster_id];
+        if(ta){ta.scores.push(a.points||0);ta.total+=(a.points||0);}
+        if(tb){tb.scores.push(b.points||0);tb.total+=(b.points||0);}
+        allMatchups.push({week:wi+1,a:{...a,name:ta?.name||'?'},b:{...b,name:tb?.name||'?'}});
+      });
+    });
+    const teams=Object.entries(teamStats).map(([rid,t])=>({
+      rid,name:t.name,displayName:t.displayName,avatar:t.avatar,
+      wins:t.wins,losses:t.losses,
+      avg:t.scores.length?t.total/t.scores.length:0,
+      high:t.scores.length?Math.max(...t.scores):0,
+      low:t.scores.length?Math.min(...t.scores):0,
+      total:t.total,games:t.scores.length
+    }));
+    const vm=allMatchups.filter(m=>m.a.points>0||m.b.points>0);
+    const highestGame=vm.reduce((b,m)=>{const h=Math.max(m.a.points||0,m.b.points||0);return h>(b?.score||0)?{...m,score:h}:b;},null);
+    const biggestBlowout=vm.reduce((b,m)=>{const d=Math.abs((m.a.points||0)-(m.b.points||0));return d>(b?.diff||0)?{...m,diff:d}:b;},null);
+    const closestGame=vm.reduce((b,m)=>{const d=Math.abs((m.a.points||0)-(m.b.points||0));if(!d)return b;return d<(b?.diff||Infinity)?{...m,diff:d}:b;},null);
+    setSeasonData({teams,highestGame,biggestBlowout,closestGame,totalWeeks:max});
+    setSeasonLoading(false);
+  },[]);
+
+  const load=async()=>{
+    const id=leagueId.trim();if(!id)return;
+    setLoading(true);setError(null);
+    try{
+      const [lg,us,rs,ns]=await Promise.all([
+        get(`${BASE}/league/${id}`),get(`${BASE}/league/${id}/users`),
+        get(`${BASE}/league/${id}/rosters`),get(`${BASE}/state/nfl`)
+      ]);
+      if(!lg?.league_id)throw new Error('League not found — check your ID.');
+      const w=Math.max(1,ns.week||1);
+      const [mx,tx]=await Promise.all([
+        get(`${BASE}/league/${id}/matchups/${w}`),
+        get(`${BASE}/league/${id}/transactions/${w}`)
+      ]);
+      setLeague(lg);setUsers(us);setRosters(rs);setNflState(ns);
+      setWeek(w);setMaxWeek(w);
+      setMatchups(Array.isArray(mx)?mx:[]);
+      setTransactions(Array.isArray(tx)?tx:[]);
+      setLoaded(true);
+      loadSeason(id,w,rs,us);
+      loadPlayers();
+    }catch(e){setError(e.message||'Failed to load.');}
+    finally{setLoading(false);}
+  };
+
+  const changeWeek=async w2=>{setWeek(w2);await loadWeek(league.league_id,w2);};
+
+  if(!loaded)return(
+    <div style={{maxWidth:480,margin:'1rem auto'}}>
+      <p style={{fontSize:'26px',fontWeight:'500',margin:'0 0 6px'}}>🏈 Fantasy Dashboard</p>
+      <p style={{fontSize:'14px',color:'var(--text2)',margin:'0 0 20px'}}>Connect your Sleeper league for live standings, matchups, transactions, and AI-generated newsletters.</p>
+      <div style={{background:'var(--bg2)',borderRadius:'var(--radius-lg)',padding:'12px 14px',marginBottom:'16px',fontSize:'13px',color:'var(--text2)',lineHeight:1.7}}>
+        Find your League ID in the Sleeper app:<br/>
+        <strong style={{fontWeight:'500',color:'var(--text)'}}>League → Settings → scroll down to "League ID"</strong>
+      </div>
+      <div style={{display:'flex',gap:'8px'}}>
+        <input type="text" placeholder="Paste your League ID here…" value={leagueId} onChange={e=>setLeagueId(e.target.value)} onKeyDown={e=>e.key==='Enter'&&load()} autoFocus/>
+        <button onClick={load} disabled={loading} style={{flexShrink:0}}>{loading?'Loading…':'Load League'}</button>
+      </div>
+      {error&&<p style={{marginTop:'10px',fontSize:'13px',color:'var(--danger-text)'}}>{error}</p>}
+    </div>
+  );
+
+  const userMap={};users.forEach(u=>{userMap[u.user_id]=u;});
+  const rosterMap={};rosters.forEach(r=>{rosterMap[r.roster_id]=r;});
+
+  const sorted=rosters.map(r=>{
+    const u=userMap[r.owner_id]||{};
+    return{...r,teamName:u.metadata?.team_name||u.display_name||'?',displayName:u.display_name||'—',avatar:u.avatar};
+  }).sort((a,b)=>{
+    const dw=(b.settings?.wins||0)-(a.settings?.wins||0);if(dw)return dw;
+    const pa=(a.settings?.fpts||0)+(a.settings?.fpts_decimal||0)/100;
+    const pb=(b.settings?.fpts||0)+(b.settings?.fpts_decimal||0)/100;
+    return pb-pa;
+  });
+
+  const mxMap={};matchups.forEach(m=>{if(!mxMap[m.matchup_id])mxMap[m.matchup_id]=[];mxMap[m.matchup_id].push(m);});
+  const pairs=Object.values(mxMap).filter(p=>p.length===2).map(pair=>
+    pair.map(m=>{const u=userMap[(rosterMap[m.roster_id]||{}).owner_id]||{};return{...m,teamName:u.metadata?.team_name||u.display_name||'?',avatar:u.avatar};})
+  );
+
+  const txList=transactions.filter(t=>t.status==='complete').slice(0,20).map(t=>({
+    ...t,teams:(t.roster_ids||[]).map(rid=>{const u=userMap[(rosterMap[rid]||{}).owner_id]||{};return u.display_name||'?';})
+  }));
+
+  const resolvePlayer=pid=>{
+    if(!players)return null;
+    const p=players[pid];if(!p)return pid;
+    return`${p.first_name||''} ${p.last_name||''}`.trim()||pid;
+  };
+
+  const generateNewsletter=async()=>{
+    setGenLoading(true);setTab('newsletter');setNewsletter('');
+    const standings=sorted.map((r,i)=>{
+      const pts=((r.settings?.fpts||0)+(r.settings?.fpts_decimal||0)/100).toFixed(1);
+      return`${i+1}. ${r.teamName} (${r.settings?.wins||0}-${r.settings?.losses||0}) — ${pts} pts`;
+    }).join('\n');
+    const mxSummary=pairs.map(([a,b])=>`${a.teamName} ${(a.points||0).toFixed(2)} vs ${b.teamName} ${(b.points||0).toFixed(2)}`).join('\n');
+    const txSummary=txList.slice(0,6).map(t=>{
+      const addNames=Object.keys(t.adds||{}).map(pid=>resolvePlayer(pid)||pid).join(', ');
+      const dropNames=Object.keys(t.drops||{}).map(pid=>resolvePlayer(pid)||pid).join(', ');
+      if(t.type==='trade')return`Trade: ${t.teams.join(' and ')}`;
+      return`${t.teams[0]||'?'} ${t.type}: added ${addNames||'—'}${dropNames?', dropped '+dropNames:''}`;
+    }).join('\n');
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:1000,
+          messages:[{role:'user',content:`Write a witty, trash-talky weekly newsletter for the "${league.name}" fantasy football league, week ${week}.\n\nStandings:\n${standings}\n\nWeek ${week} matchups:\n${mxSummary||'(none)'}\n\nRecent transactions:\n${txSummary||'(none)'}\n\nWrite 3-4 fun paragraphs in commissioner voice. Plain text only, no markdown.`}]
+        })
+      });
+      const d=await res.json();
+      setNewsletter(d.content?.map(c=>c.text||'').join('')||'Error generating.');
+    }catch{setNewsletter('Could not generate newsletter.');}
+    setGenLoading(false);
+  };
+
+  const TABS=['standings','matchups','transactions','season','newsletter'];
+  const weekOptions=Array.from({length:maxWeek},(_,i)=>i+1);
+
+  return(
+    <div>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'1.25rem',gap:'12px',flexWrap:'wrap'}}>
+        <div>
+          <p style={{fontSize:'22px',fontWeight:'500',margin:'0 0 4px'}}>🏈 {league.name}</p>
+          <p style={{fontSize:'13px',color:'var(--text2)',margin:0,display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+            <span>{league.season} · {rosters.length} teams · week {nflState?.week||'?'}</span>
+            {playersLoading&&<span style={{display:'inline-flex',alignItems:'center',gap:'5px'}}><Spin size={12}/> Loading player names…</span>}
+            {players&&!playersLoading&&<span style={{color:'var(--success-text)'}}>· player names ready</span>}
+          </p>
+        </div>
+        <button onClick={generateNewsletter} disabled={genLoading}>{genLoading?'Writing…':'Generate Newsletter'}</button>
+      </div>
+
+      <div style={{display:'flex',borderBottom:`0.5px solid var(--border)`,marginBottom:'1.25rem',gap:'2px',flexWrap:'wrap'}}>
+        {TABS.map(t=>(
+          <button key={t} onClick={()=>setTab(t)} style={{
+            background:'none',border:'none',borderRadius:0,height:'auto',
+            borderBottom:tab===t?`2px solid var(--text)`:'2px solid transparent',
+            padding:'6px 12px',fontSize:'14px',cursor:'pointer',marginBottom:'-1px',
+            fontWeight:tab===t?'500':'400',color:tab===t?'var(--text)':'var(--text2)'
+          }}>
+            {t==='season'?'Season Stats':t.charAt(0).toUpperCase()+t.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {(tab==='matchups'||tab==='transactions')&&(
+        <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'1rem',flexWrap:'wrap'}}>
+          <span style={{fontSize:'13px',color:'var(--text2)'}}>Week</span>
+          <div style={{display:'flex',gap:'4px',flexWrap:'wrap'}}>
+            {weekOptions.map(w=>(
+              <button key={w} onClick={()=>changeWeek(w)} style={{
+                padding:'3px 10px',fontSize:'12px',height:'auto',
+                fontWeight:week===w?'500':'400',
+                background:week===w?'var(--bg2)':'none',
+                borderColor:week===w?'var(--border2)':'var(--border)'
+              }}>{w}</button>
+            ))}
+          </div>
+          {weekLoading&&<Spin/>}
+        </div>
+      )}
+
+      {tab==='standings'&&(
+        <div>
+          {sorted.map((r,i)=>{
+            const pts=((r.settings?.fpts||0)+(r.settings?.fpts_decimal||0)/100).toFixed(1);
+            const ptsA=((r.settings?.fpts_against||0)+(r.settings?.fpts_against_decimal||0)/100).toFixed(1);
+            const playoff=i<Math.ceil(rosters.length/2);
+            return(
+              <div key={r.roster_id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 0',borderBottom:`0.5px solid var(--border)`}}>
+                <span style={{width:'20px',fontSize:'13px',color:playoff?'var(--success-text)':'var(--text2)',textAlign:'center',flexShrink:0,fontWeight:i===0?'500':'400'}}>{i+1}</span>
+                <Avatar avatar={r.avatar} name={r.teamName} size={34}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.teamName}</p>
+                  <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{r.displayName}</p>
+                </div>
+                <div style={{textAlign:'right',flexShrink:0}}>
+                  <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500'}}>{r.settings?.wins||0}-{r.settings?.losses||0}{(r.settings?.ties||0)>0?`-${r.settings.ties}`:''}</p>
+                  <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{pts} PF · {ptsA} PA</p>
+                </div>
+              </div>
+            );
+          })}
+          <p style={{fontSize:'12px',color:'var(--text2)',marginTop:'10px'}}>Green = playoff positions (top half). PF = points for, PA = points against.</p>
+        </div>
+      )}
+
+      {tab==='matchups'&&(
+        <div style={{display:'grid',gap:'10px'}}>
+          {pairs.length===0?<p style={{color:'var(--text2)',fontSize:'14px'}}>No matchup data for week {week}.</p>
+          :pairs.map(([a,b],i)=>{
+            const aW=(a.points||0)>(b.points||0),bW=(b.points||0)>(a.points||0);
+            return(
+              <div key={i} style={{background:'var(--bg2)',border:`0.5px solid var(--border)`,borderRadius:'var(--radius-lg)',padding:'14px 16px',display:'flex',alignItems:'center',gap:'8px'}}>
+                <div style={{flex:1}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+                    <Avatar avatar={a.avatar} name={a.teamName} size={26}/>
+                    <span style={{fontSize:'13px',fontWeight:'500',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.teamName}</span>
+                  </div>
+                  <p style={{margin:0,fontSize:'24px',fontWeight:aW?'500':'400',color:aW?'var(--text)':'var(--text2)'}}>{(a.points||0).toFixed(2)}</p>
+                </div>
+                <span style={{fontSize:'11px',color:'var(--text3)',flexShrink:0}}>VS</span>
+                <div style={{flex:1,textAlign:'right'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px',justifyContent:'flex-end'}}>
+                    <span style={{fontSize:'13px',fontWeight:'500',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'right'}}>{b.teamName}</span>
+                    <Avatar avatar={b.avatar} name={b.teamName} size={26}/>
+                  </div>
+                  <p style={{margin:0,fontSize:'24px',fontWeight:bW?'500':'400',color:bW?'var(--text)':'var(--text2)'}}>{(b.points||0).toFixed(2)}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tab==='transactions'&&(
+        <div>
+          {txList.length===0?<p style={{color:'var(--text2)',fontSize:'14px'}}>No completed transactions in week {week}.</p>
+          :txList.map((t,i)=>{
+            const adds=Object.keys(t.adds||{});
+            const drops=Object.keys(t.drops||{});
+            const picks=(t.draft_picks||[]).length;
+            return(
+              <div key={i} style={{padding:'14px 0',borderBottom:`0.5px solid var(--border)`}}>
+                <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px',flexWrap:'wrap'}}>
+                  <Badge type={t.type==='trade'?'info':'success'}>{t.type==='trade'?'Trade':t.type==='waiver'?'Waiver':'Free Agent'}</Badge>
+                  <span style={{fontSize:'12px',color:'var(--text2)'}}>{t.teams.join(' · ')}</span>
+                </div>
+                {adds.length>0&&(
+                  <div style={{marginBottom:'6px'}}>
+                    <span style={{fontSize:'12px',color:'var(--success-text)',fontWeight:'500',marginRight:'6px'}}>Added</span>
+                    <span style={{display:'inline-flex',flexWrap:'wrap',gap:'4px'}}>
+                      {adds.map(pid=>{
+                        const p=players?players[pid]:null;
+                        const name=p?`${p.first_name||''} ${p.last_name||''}`.trim():playersLoading?'…':pid;
+                        const pos=p?.position||'';const team=p?.team||'';
+                        return(
+                          <span key={pid} style={{fontSize:'13px',background:'var(--success-bg)',color:'var(--success-text)',padding:'2px 8px',borderRadius:'var(--radius)',display:'inline-flex',alignItems:'center',gap:'4px'}}>
+                            <span style={{fontWeight:'500'}}>{name}</span>
+                            {pos&&<span style={{fontSize:'11px',opacity:.8}}>{pos}{team?` · ${team}`:''}</span>}
+                          </span>
+                        );
+                      })}
+                    </span>
+                  </div>
+                )}
+                {drops.length>0&&(
+                  <div>
+                    <span style={{fontSize:'12px',color:'var(--danger-text)',fontWeight:'500',marginRight:'6px'}}>Dropped</span>
+                    <span style={{display:'inline-flex',flexWrap:'wrap',gap:'4px'}}>
+                      {drops.map(pid=>{
+                        const p=players?players[pid]:null;
+                        const name=p?`${p.first_name||''} ${p.last_name||''}`.trim():playersLoading?'…':pid;
+                        const pos=p?.position||'';const team=p?.team||'';
+                        return(
+                          <span key={pid} style={{fontSize:'13px',background:'var(--danger-bg)',color:'var(--danger-text)',padding:'2px 8px',borderRadius:'var(--radius)',display:'inline-flex',alignItems:'center',gap:'4px'}}>
+                            <span style={{fontWeight:'500'}}>{name}</span>
+                            {pos&&<span style={{fontSize:'11px',opacity:.8}}>{pos}{team?` · ${team}`:''}</span>}
+                          </span>
+                        );
+                      })}
+                    </span>
+                  </div>
+                )}
+                {picks>0&&<p style={{margin:'4px 0 0',fontSize:'13px',color:'var(--text2)'}}>+ {picks} draft pick{picks>1?'s':''} involved</p>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tab==='season'&&(
+        seasonLoading
+        ?<div style={{display:'flex',alignItems:'center',gap:'10px',color:'var(--text2)',fontSize:'14px',padding:'1rem 0'}}><Spin/>Loading all {maxWeek} weeks of season data…</div>
+        :!seasonData?<p style={{color:'var(--text2)',fontSize:'14px'}}>Season data unavailable.</p>
+        :<div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'10px',marginBottom:'1.5rem'}}>
+            {seasonData.highestGame&&(()=>{
+              const {a,b}=seasonData.highestGame;
+              const w=(a.points||0)>(b.points||0)?a:b;
+              return<StatCard label="Season high score" value={`${w.points?.toFixed(1)} pts`} sub={`${w.name} · Wk ${seasonData.highestGame.week}`}/>;
+            })()}
+            {seasonData.biggestBlowout&&(()=>{
+              const {a,b,diff}=seasonData.biggestBlowout;
+              const w=(a.points||0)>(b.points||0)?a:b;
+              return<StatCard label="Biggest blowout" value={`+${diff.toFixed(1)} pts`} sub={`${w.name} · Wk ${seasonData.biggestBlowout.week}`}/>;
+            })()}
+            {seasonData.closestGame&&(()=>{
+              const {a,b,diff}=seasonData.closestGame;
+              return<StatCard label="Closest game" value={`${diff.toFixed(2)} margin`} sub={`${a.name} vs ${b.name} · Wk ${seasonData.closestGame.week}`}/>;
+            })()}
+            <StatCard label="Weeks tracked" value={seasonData.totalWeeks} sub="regular season"/>
+          </div>
+          <p style={{fontSize:'13px',fontWeight:'500',margin:'0 0 10px',color:'var(--text2)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Team averages — ranked by scoring</p>
+          {seasonData.teams.sort((a,b)=>b.avg-a.avg).map((t,i)=>(
+            <div key={t.rid} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 0',borderBottom:`0.5px solid var(--border)`}}>
+              <span style={{width:'20px',fontSize:'13px',color:'var(--text2)',textAlign:'center',flexShrink:0}}>{i+1}</span>
+              <Avatar avatar={t.avatar} name={t.name} size={32}/>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</p>
+                <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>High {t.high.toFixed(1)} · Low {t.low.toFixed(1)} · {t.games} games</p>
+              </div>
+              <div style={{textAlign:'right',flexShrink:0}}>
+                <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500'}}>{t.avg.toFixed(1)} avg</p>
+                <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{t.total.toFixed(1)} total</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab==='newsletter'&&(
+        <div>
+          {genLoading&&<div style={{display:'flex',alignItems:'center',gap:'10px',color:'var(--text2)',fontSize:'14px',padding:'1rem 0'}}><Spin/>Writing your newsletter…</div>}
+          {newsletter&&!genLoading&&(
+            <div style={{background:'var(--bg2)',border:`0.5px solid var(--border)`,borderRadius:'var(--radius-lg)',padding:'1.25rem',fontSize:'14px',lineHeight:'1.8',whiteSpace:'pre-wrap'}}>{newsletter}</div>
+          )}
+          {!newsletter&&!genLoading&&(
+            <div style={{padding:'2rem 0',textAlign:'center'}}>
+              <p style={{fontSize:'14px',color:'var(--text2)',marginBottom:'12px'}}>Generate an AI-written weekly recap using your real league data and player names.</p>
+              <button onClick={generateNewsletter}>Generate Newsletter</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
