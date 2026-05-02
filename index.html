@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fantasy Football Dashboard</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#fff;--bg2:#f5f5f4;--bg3:#eeedea;
+      --text:#1a1a18;--text2:#6b6b67;--text3:#9c9c97;
+      --border:rgba(0,0,0,0.11);--border2:rgba(0,0,0,0.20);
+      --radius:8px;--radius-lg:12px;
+      --green-bg:#eaf3de;--green:#3b6d11;
+      --red-bg:#fcebeb;--red:#a32d2d;
+      --blue-bg:#e6f1fb;--blue:#185fa5;
+      --amber-bg:#faeeda;--amber:#854f0b;
+    }
+    @media(prefers-color-scheme:dark){
+      :root{
+        --bg:#1c1c1a;--bg2:#252523;--bg3:#2e2e2b;
+        --text:#f0efeb;--text2:#9c9c97;--text3:#6b6b67;
+        --border:rgba(255,255,255,0.09);--border2:rgba(255,255,255,0.17);
+        --green-bg:#173404;--green:#c0dd97;
+        --red-bg:#501313;--red:#f7c1c1;
+        --blue-bg:#042c53;--blue:#b5d4f4;
+        --amber-bg:#412402;--amber:#fac775;
+      }
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg3);color:var(--text);min-height:100vh;padding:1.5rem 1rem}
+    #root{max-width:1200px;margin:0 auto}
+    .card{background:var(--bg);border-radius:var(--radius-lg);border:0.5px solid var(--border);padding:1.5rem 2rem 2rem}
+    input[type=text],input[type=password]{background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:14px;padding:8px 12px;height:36px;outline:none;font-family:inherit;width:100%}
+    input[type=text]:focus,input[type=password]:focus{border-color:var(--text2)}
+    button{background:none;border:0.5px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:14px;font-family:inherit;padding:6px 14px;height:36px;cursor:pointer}
+    button:hover:not(:disabled){background:var(--bg2)}
+    button:active:not(:disabled){transform:scale(0.98)}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spin{display:inline-block;border:2px solid var(--border2);border-top-color:var(--text);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+    table{border-collapse:collapse;width:100%}
+    th,td{text-align:left;padding:6px 10px;border-bottom:0.5px solid var(--border);font-size:12px}
+    th{font-weight:500;color:var(--text2);white-space:nowrap;background:var(--bg)}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useCallback}=React;
+const BASE='https://api.sleeper.app/v1';
+const LEAGUE_ID='1334357712166727680';
+const get=url=>fetch(url).then(r=>r.json());
+const fmt=ts=>ts?new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'';
+const Spin=({size=14})=><div className="spin" style={{width:size,height:size}}/>;
+
+const Avatar=({avatar,name,size=32})=>{
+  const [err,setErr]=useState(false);
+  return(<div style={{width:size,height:size,borderRadius:'50%',background:'var(--bg2)',flexShrink:0,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',fontSize:Math.floor(size*.35)+'px',color:'var(--text2)',fontWeight:'500'}}>
+    {avatar&&!err?<img src={`https://sleepercdn.com/avatars/thumbs/${avatar}`} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>:(name||'??').slice(0,2).toUpperCase()}
+  </div>);
+};
+
+const Chip=({children,color='blue'})=>(
+  <span style={{fontSize:'11px',padding:'2px 8px',borderRadius:4,background:`var(--${color}-bg)`,color:`var(--${color})`,fontWeight:'500',flexShrink:0,whiteSpace:'nowrap'}}>{children}</span>
+);
+
+const Ruler=()=>{
+  const W=1160,H=100,pad=20,iw=(W-pad*2)/12;
+  const ticks=[];
+  for(let i=0;i<=12*8;i++){
+    const x=pad+i/8*iw;
+    const inch=i%8===0,half=i%4===0&&!inch,qtr=i%2===0&&!half&&!inch;
+    const h=inch?32:half?22:qtr?14:9;
+    ticks.push(<line key={'t'+i} x1={x} y1={14} x2={x} y2={14+h} stroke="#5a3800" strokeWidth={inch?1.5:0.8} opacity={inch?1:0.7}/>);
+    if(inch&&i>0&&i<96) ticks.push(<text key={'n'+i} x={x} y={58} textAnchor="middle" fontSize="15" fill="#5a3800" fontFamily="sans-serif" fontWeight="500">{i/8}</text>);
+  }
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',display:'block',borderRadius:6}}>
+      <rect x={0} y={0} width={W} height={H} rx={6} fill="#E8C460"/>
+      <rect x={0} y={0} width={W} height={14} rx={4} fill="#B8891E"/>
+      <rect x={0} y={H-14} width={W} height={14} rx={4} fill="#B8891E"/>
+      <line x1={0} y1={24} x2={W} y2={24} stroke="#D4A030" strokeWidth={1} opacity={0.35}/>
+      <line x1={0} y1={H-24} x2={W} y2={H-24} stroke="#D4A030" strokeWidth={1} opacity={0.35}/>
+      {ticks}
+      <rect x={0} y={0} width={W} height={H} rx={6} fill="none" stroke="#A07818" strokeWidth={1}/>
+    </svg>
+  );
+};
+
+function App(){
+  const [view,setView]=useState('home');
+  const [loaded,setLoaded]=useState(false);
+  const [error,setError]=useState(null);
+  const [league,setLeague]=useState(null);
+  const [users,setUsers]=useState([]);
+  const [rosters,setRosters]=useState([]);
+  const [nflState,setNflState]=useState(null);
+  const [week,setWeek]=useState(1);
+  const [maxWeek,setMaxWeek]=useState(1);
+  const [matchups,setMatchups]=useState([]);
+  const [transactions,setTransactions]=useState([]);
+  const [allTransactions,setAllTransactions]=useState([]);
+  const [weekLoading,setWeekLoading]=useState(false);
+  const [seasonData,setSeasonData]=useState(null);
+  const [players,setPlayers]=useState(null);
+  const [playersLoading,setPlayersLoading]=useState(false);
+  const [draftData,setDraftData]=useState(null);
+  const [draftPicks,setDraftPicks]=useState([]);
+  const [newsletter,setNewsletter]=useState('');
+  const [genLoading,setGenLoading]=useState(false);
+  const [apiKey,setApiKey]=useState(()=>{try{return localStorage.getItem('ff_api_key')||''}catch{return ''}});
+  const [showKey,setShowKey]=useState(false);
+
+  const saveKey=k=>{setApiKey(k);try{localStorage.setItem('ff_api_key',k)}catch{}};
+
+  const loadWeek=useCallback(async(id,w)=>{
+    setWeekLoading(true);
+    try{
+      const [mx,tx]=await Promise.all([get(`${BASE}/league/${id}/matchups/${w}`),get(`${BASE}/league/${id}/transactions/${w}`)]);
+      setMatchups(Array.isArray(mx)?mx:[]);
+      setTransactions(Array.isArray(tx)?tx:[]);
+    }finally{setWeekLoading(false);}
+  },[]);
+
+  const loadSeason=useCallback(async(id,max,ros,usrs)=>{
+    const allWeeks=await Promise.all(Array.from({length:max},(_,i)=>get(`${BASE}/league/${id}/matchups/${i+1}`).catch(()=>[])));
+    const uMap={};usrs.forEach(u=>{uMap[u.user_id]=u;});
+    const rMap={};ros.forEach(r=>{rMap[r.roster_id]=r;});
+    const ts={};
+    ros.forEach(r=>{const u=uMap[r.owner_id]||{};ts[r.roster_id]={name:u.metadata?.team_name||u.display_name||'?',avatar:u.avatar,scores:[],total:0,wins:r.settings?.wins||0,losses:r.settings?.losses||0};});
+    const allMx=[];
+    allWeeks.forEach((wData,wi)=>{
+      if(!Array.isArray(wData))return;
+      const mm={};wData.forEach(m=>{if(!mm[m.matchup_id])mm[m.matchup_id]=[];mm[m.matchup_id].push(m);});
+      Object.values(mm).filter(p=>p.length===2).forEach(([a,b])=>{
+        if(!a.points&&!b.points)return;
+        const ta=ts[a.roster_id],tb=ts[b.roster_id];
+        if(ta){ta.scores.push(a.points||0);ta.total+=a.points||0;}
+        if(tb){tb.scores.push(b.points||0);tb.total+=b.points||0;}
+        allMx.push({week:wi+1,a:{...a,name:ta?.name||'?'},b:{...b,name:tb?.name||'?'}});
+      });
+    });
+    const teams=Object.entries(ts).map(([rid,t])=>({rid,...t,avg:t.scores.length?t.total/t.scores.length:0,high:t.scores.length?Math.max(...t.scores):0,low:t.scores.length?Math.min(...t.scores):0,total:t.total,games:t.scores.length}));
+    const vm=allMx.filter(m=>m.a.points>0||m.b.points>0);
+    setSeasonData({teams,vm,
+      highestGame:vm.reduce((b,m)=>{const h=Math.max(m.a.points||0,m.b.points||0);return h>(b?.score||0)?{...m,score:h}:b;},null),
+      biggestBlowout:vm.reduce((b,m)=>{const d=Math.abs((m.a.points||0)-(m.b.points||0));return d>(b?.diff||0)?{...m,diff:d}:b;},null),
+      closestGame:vm.reduce((b,m)=>{const d=Math.abs((m.a.points||0)-(m.b.points||0));if(!d)return b;return d<(b?.diff||Infinity)?{...m,diff:d}:b;},null),
+      totalWeeks:max
+    });
+  },[]);
+
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const [lg,us,rs,ns]=await Promise.all([get(`${BASE}/league/${LEAGUE_ID}`),get(`${BASE}/league/${LEAGUE_ID}/users`),get(`${BASE}/league/${LEAGUE_ID}/rosters`),get(`${BASE}/state/nfl`)]);
+        if(!lg?.league_id)throw new Error('League not found.');
+        const w=Math.max(1,ns.week||1);
+        const [mx,tx]=await Promise.all([get(`${BASE}/league/${LEAGUE_ID}/matchups/${w}`),get(`${BASE}/league/${LEAGUE_ID}/transactions/${w}`)]);
+        setLeague(lg);setUsers(us);setRosters(rs);setNflState(ns);
+        setWeek(w);setMaxWeek(w);
+        setMatchups(Array.isArray(mx)?mx:[]);
+        setTransactions(Array.isArray(tx)?tx:[]);
+        setLoaded(true);
+        loadSeason(LEAGUE_ID,w,rs,us);
+        const txWeeks=Array.from({length:Math.min(4,w)},(_,i)=>w-i);
+        Promise.all(txWeeks.map(wk=>get(`${BASE}/league/${LEAGUE_ID}/transactions/${wk}`).catch(()=>[]))).then(arr=>{
+          setAllTransactions(arr.flat().filter(t=>t.status==='complete'));
+        });
+        get(`${BASE}/league/${LEAGUE_ID}/drafts`).then(async drafts=>{
+          if(!Array.isArray(drafts)||!drafts.length)return;
+          const latest=drafts[drafts.length-1];
+          const [di,picks]=await Promise.all([get(`${BASE}/draft/${latest.draft_id}`),get(`${BASE}/draft/${latest.draft_id}/picks`)]);
+          setDraftData(di);setDraftPicks(Array.isArray(picks)?picks:[]);
+        }).catch(()=>{});
+        setPlayersLoading(true);
+        get(`${BASE}/players/nfl`).then(p=>{setPlayers(p);setPlayersLoading(false);}).catch(()=>{setPlayers({});setPlayersLoading(false);});
+      }catch(e){setError(e.message||'Failed to load league.');}
+    })();
+  },[]);
+
+  if(error) return <div style={{padding:'3rem',textAlign:'center',color:'var(--red)',fontSize:'14px'}}>{error}</div>;
+  if(!loaded) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'12px',padding:'4rem',fontSize:'14px',color:'var(--text2)'}}><Spin size={20}/>Loading your league…</div>;
+
+  const userMap={};users.forEach(u=>{userMap[u.user_id]=u;});
+  const rosterMap={};rosters.forEach(r=>{rosterMap[r.roster_id]=r;});
+  const getUser=rid=>{const r=rosterMap[rid]||{};return userMap[r.owner_id]||{};};
+  const getTeamName=rid=>{const u=getUser(rid);return u.metadata?.team_name||u.display_name||'Unknown';};
+
+  const sorted=rosters.map(r=>{
+    const u=userMap[r.owner_id]||{};
+    return{...r,teamName:u.metadata?.team_name||u.display_name||'?',displayName:u.display_name||'—',avatar:u.avatar};
+  }).sort((a,b)=>{
+    const dw=(b.settings?.wins||0)-(a.settings?.wins||0);if(dw)return dw;
+    return((b.settings?.fpts||0)+(b.settings?.fpts_decimal||0)/100)-((a.settings?.fpts||0)+(a.settings?.fpts_decimal||0)/100);
+  });
+
+  const mxPairs=(()=>{
+    const mm={};matchups.forEach(m=>{if(!mm[m.matchup_id])mm[m.matchup_id]=[];mm[m.matchup_id].push(m);});
+    return Object.values(mm).filter(p=>p.length===2).map(pair=>pair.map(m=>{const u=userMap[(rosterMap[m.roster_id]||{}).owner_id]||{};return{...m,teamName:u.metadata?.team_name||u.display_name||'?',avatar:u.avatar};}));
+  })();
+
+  const resolveName=pid=>{if(!players)return null;const p=players[pid];if(!p)return pid;return`${p.first_name||''} ${p.last_name||''}`.trim()||pid;};
+  const resolveFull=pid=>{if(!players)return{name:pid,pos:'',team:''};const p=players[pid];if(!p)return{name:pid,pos:'',team:''};return{name:`${p.first_name||''} ${p.last_name||''}`.trim()||pid,pos:p.position||'',team:p.team||'FA'};};
+
+  // Given a traded draft pick, find which player was actually selected with it.
+  // Matches by cross-referencing the original owner's draft slot against the completed draft board.
+  const resolvePickPlayer=pick=>{
+    if(!draftPicks.length||!draftData)return null;
+    // Skip future-season picks that couldn't have been used yet
+    if(parseInt(pick.season)>parseInt(league?.season||'9999'))return null;
+    const slotToRoster=draftData.slot_to_roster_id||{};
+    // Find which draft slot belonged to the original owner of this pick
+    let draftSlot=null;
+    Object.entries(slotToRoster).forEach(([slot,rid])=>{
+      if(String(rid)===String(pick.previous_owner_id))draftSlot=parseInt(slot);
+    });
+    if(!draftSlot)return null;
+    // Find the actual pick taken at that round + slot
+    const match=draftPicks.find(dp=>dp.round===pick.round&&dp.draft_slot===draftSlot);
+    if(!match)return null;
+    const m=match.metadata||{};
+    const name=`${m.first_name||''} ${m.last_name||''}`.trim();
+    return name?{name,pos:m.position||'',team:m.team||''}:null;
+  };
+
+  const buildTradeGroups=t=>{
+    const groups={};
+    const ensure=rid=>{
+      const key=String(rid);
+      if(!groups[key]){const u=getUser(rid);groups[key]={rid,teamName:u.metadata?.team_name||u.display_name||'Unknown',avatar:u.avatar,receives:{players:[],picks:[]},gives:{players:[],picks:[]}};}
+    };
+    (t.roster_ids||[]).forEach(rid=>ensure(rid));
+    Object.entries(t.adds||{}).forEach(([pid,rid])=>{ensure(rid);groups[String(rid)].receives.players.push(pid);});
+    Object.entries(t.drops||{}).forEach(([pid,rid])=>{ensure(rid);groups[String(rid)].gives.players.push(pid);});
+    (t.draft_picks||[]).forEach(pick=>{
+      ensure(pick.roster_id);ensure(pick.owner_id);
+      const origU=userMap[(rosterMap[pick.previous_owner_id]||{}).owner_id]||{};
+      const origName=origU.metadata?.team_name||origU.display_name||'?';
+      const isSame=pick.previous_owner_id===pick.owner_id;
+      groups[String(pick.roster_id)].receives.picks.push({...pick,originalOwnerName:isSame?null:origName});
+      groups[String(pick.owner_id)].gives.picks.push({...pick,originalOwnerName:isSame?null:origName});
+    });
+    return Object.values(groups);
+  };
+
+  const txList=transactions.filter(t=>t.status==='complete');
+
+  const generateNewsletter=async()=>{
+    if(!apiKey.trim()){setView('newsletter');setNewsletter('__NOKEY__');return;}
+    setGenLoading(true);setView('newsletter');setNewsletter('');
+    const standingsTxt=sorted.map((r,i)=>{
+      const pts=((r.settings?.fpts||0)+(r.settings?.fpts_decimal||0)/100).toFixed(1);
+      const pa=((r.settings?.fpts_against||0)+(r.settings?.fpts_against_decimal||0)/100).toFixed(1);
+      return`${i+1}. ${r.teamName} (${r.settings?.wins||0}-${r.settings?.losses||0}) PF:${pts} PA:${pa}`;
+    }).join('\n');
+    const mxTxt=mxPairs.map(([a,b])=>{
+      const aW=(a.points||0)>(b.points||0);
+      return`${aW?'WIN':'   '} ${a.teamName} ${(a.points||0).toFixed(2)} vs ${b.teamName} ${(b.points||0).toFixed(2)}${!aW?' WIN':''}`;
+    }).join('\n');
+    const txTxt=allTransactions.slice(0,15).map(t=>{
+      if(t.type==='trade'){
+        const grps=buildTradeGroups(t);
+        return`TRADE (${fmt(t.status_updated||t.created)}): `+grps.map(g=>`${g.teamName} receives [${[...g.receives.players.map(p=>resolveName(p)||p),...g.receives.picks.map(pk=>`${pk.season} Rd${pk.round}`)].join(', ')||'nothing'}]`).join(' | ');
+      }
+      const adds=Object.keys(t.adds||{}).map(p=>resolveName(p)||p).join(', ');
+      const drops=Object.keys(t.drops||{}).map(p=>resolveName(p)||p).join(', ');
+      return`${t.type.toUpperCase()} (${fmt(t.status_updated||t.created)}): ${getTeamName(t.roster_ids?.[0])} ${adds?'added '+adds:''} ${drops?'/ dropped '+drops:''}`;
+    }).join('\n');
+    const draftTxt=draftPicks.slice(0,24).map(p=>{
+      const m=p.metadata||{};
+      return`Rd${p.round} Pk${p.pick_no}: ${m.first_name||''} ${m.last_name||''} (${m.position||'?'} ${m.team||'?'}) to ${getTeamName(p.roster_id)}`;
+    }).join('\n');
+    const seasonTxt=seasonData?[
+      seasonData.highestGame&&`Season high: ${Math.max(seasonData.highestGame.a.points||0,seasonData.highestGame.b.points||0).toFixed(1)} pts (Wk${seasonData.highestGame.week})`,
+      seasonData.biggestBlowout&&`Biggest blowout: ${seasonData.biggestBlowout.diff?.toFixed(1)} pt margin (Wk${seasonData.biggestBlowout.week})`,
+      seasonData.closestGame&&`Closest game: ${seasonData.closestGame.diff?.toFixed(2)} pt margin (Wk${seasonData.closestGame.week})`,
+    ].filter(Boolean).join('\n'):'';
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey.trim(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1400,messages:[{role:'user',content:`You are a witty, trash-talking commissioner writing the weekly newsletter for the "${league.name}" fantasy football league. Be specific, funny, and roast bad decisions.\n\n=== STANDINGS ===\n${standingsTxt}\n\n=== WEEK ${week} MATCHUPS ===\n${mxTxt||'(no data)'}\n\n=== RECENT TRANSACTIONS (last 4 weeks) ===\n${txTxt||'(none)'}\n\n=== DRAFT HIGHLIGHTS ===\n${draftTxt||'(no draft data)'}\n\n=== SEASON RECORDS ===\n${seasonTxt||'n/a'}\n\nWrite 4-5 entertaining paragraphs. Reference real team names, scores, trades, and players by name. Roast questionable moves. Hype strong performances. End with a bold prediction for next week. Plain text only.`}]})
+      });
+      const d=await res.json();
+      if(d.error)throw new Error(d.error.message||'API error');
+      setNewsletter(d.content?.map(c=>c.text||'').join('')||'No response.');
+    }catch(e){setNewsletter('Error: '+e.message);}
+    setGenLoading(false);
+  };
+
+  const draftBoard=(()=>{
+    if(!draftData||!draftPicks.length)return null;
+    const numTeams=draftData.settings?.teams||rosters.length;
+    const numRounds=draftData.settings?.rounds||15;
+    const slotToRoster=draftData.slot_to_roster_id||{};
+    const headers=Array.from({length:numTeams},(_,i)=>{const rid=slotToRoster[String(i+1)]||slotToRoster[i+1];return rid?getTeamName(rid):`Slot ${i+1}`;});
+    const grid=Array.from({length:numRounds},()=>Array(numTeams).fill(null));
+    draftPicks.forEach(pick=>{
+      const r=(pick.round||1)-1,s=(pick.draft_slot||1)-1;
+      if(r>=0&&r<numRounds&&s>=0&&s<numTeams)grid[r][s]=pick;
+    });
+    return{headers,grid,numTeams,numRounds,slotToRoster};
+  })();
+
+  // Map every player_id to whichever roster currently holds them.
+  // Used by the draft board to show where each drafted player has landed.
+  const playerCurrentRoster={};
+  rosters.forEach(r=>{(r.players||[]).forEach(pid=>{playerCurrentRoster[String(pid)]=r.roster_id;});});
+
+  const NAV=[
+    {id:'standings',label:'Standings',emoji:'📊',desc:'Win/loss records and points'},
+    {id:'matchups',label:'Matchups',emoji:'⚔️',desc:'Head-to-head scores by week'},
+    {id:'transactions',label:'Transactions',emoji:'💼',desc:'Trades, waivers, free agents'},
+    {id:'season',label:'Season Stats',emoji:'🏆',desc:'Records, averages, highs'},
+    {id:'draft',label:'Draft',emoji:'📋',desc:'Full draft board and picks'},
+    {id:'newsletter',label:'Newsletter',emoji:'📰',desc:'AI-generated weekly recap'},
+  ];
+
+  if(view==='home') return(
+    <div>
+      <div className="card" style={{marginBottom:'1rem'}}>
+        <div style={{marginBottom:'1rem'}}>
+          <p style={{fontSize:'26px',fontWeight:'500',margin:'0 0 4px'}}>🏈 {league.name}</p>
+          <p style={{fontSize:'14px',color:'var(--text2)',margin:0}}>{league.season} season · {rosters.length} teams · Week {nflState?.week||'?'}</p>
+        </div>
+        <Ruler/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:'10px'}}>
+        {NAV.map(n=>(
+          <button key={n.id} onClick={()=>setView(n.id)} style={{height:'auto',padding:'1.25rem',textAlign:'left',background:'var(--bg)',borderRadius:'var(--radius-lg)',border:'0.5px solid var(--border)',display:'flex',flexDirection:'column',gap:'6px',cursor:'pointer'}}>
+            <span style={{fontSize:'24px'}}>{n.emoji}</span>
+            <span style={{fontSize:'15px',fontWeight:'500'}}>{n.label}</span>
+            <span style={{fontSize:'12px',color:'var(--text2)',fontWeight:'400'}}>{n.desc}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const weekBar=(
+    <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'1rem',flexWrap:'wrap'}}>
+      <span style={{fontSize:'13px',color:'var(--text2)'}}>Week</span>
+      <div style={{display:'flex',gap:'3px',flexWrap:'wrap'}}>
+        {Array.from({length:maxWeek},(_,i)=>i+1).map(w=>(
+          <button key={w} onClick={()=>{setWeek(w);loadWeek(LEAGUE_ID,w);}} style={{padding:'2px 9px',fontSize:'12px',height:'auto',fontWeight:week===w?'500':'400',background:week===w?'var(--bg2)':'none',borderColor:week===w?'var(--border2)':'var(--border)'}}>{w}</button>
+        ))}
+      </div>
+      {weekLoading&&<Spin/>}
+    </div>
+  );
+
+  return(
+    <div className="card">
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'1.25rem',gap:'12px',flexWrap:'wrap'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+          <button onClick={()=>setView('home')} style={{fontSize:'13px',padding:'4px 12px',height:'auto'}}>← Home</button>
+          <div>
+            <p style={{fontSize:'18px',fontWeight:'500',margin:'0 0 2px'}}>{NAV.find(n=>n.id===view)?.emoji} {NAV.find(n=>n.id===view)?.label}</p>
+            <p style={{fontSize:'12px',color:'var(--text2)',margin:0,display:'flex',alignItems:'center',gap:'6px'}}>
+              {league.name} · Week {nflState?.week||'?'}
+              {playersLoading&&<span style={{display:'inline-flex',alignItems:'center',gap:'4px'}}><Spin size={10}/>loading names</span>}
+              {players&&!playersLoading&&<span style={{color:'var(--green)'}}>· names ready</span>}
+            </p>
+          </div>
+        </div>
+        <div style={{display:'flex',gap:'4px',flexWrap:'wrap'}}>
+          {NAV.map(n=>(
+            <button key={n.id} onClick={()=>setView(n.id)} style={{fontSize:'12px',padding:'4px 10px',height:'auto',fontWeight:view===n.id?'500':'400',background:view===n.id?'var(--bg2)':'none',borderColor:view===n.id?'var(--border2)':'var(--border)'}}>{n.emoji} {n.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {view==='standings'&&(
+        <div>
+          {sorted.map((r,i)=>{
+            const pts=((r.settings?.fpts||0)+(r.settings?.fpts_decimal||0)/100).toFixed(1);
+            const pa=((r.settings?.fpts_against||0)+(r.settings?.fpts_against_decimal||0)/100).toFixed(1);
+            const playoff=i<Math.ceil(rosters.length/2);
+            return(
+              <div key={r.roster_id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 0',borderBottom:'0.5px solid var(--border)'}}>
+                <span style={{width:'22px',fontSize:'13px',color:playoff?'var(--green)':'var(--text2)',textAlign:'center',flexShrink:0,fontWeight:i===0?'500':'400'}}>{i+1}</span>
+                <Avatar avatar={r.avatar} name={r.teamName} size={36}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.teamName}</p>
+                  <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{r.displayName}</p>
+                </div>
+                <div style={{textAlign:'right',flexShrink:0}}>
+                  <p style={{margin:'0 0 2px',fontSize:'15px',fontWeight:'500'}}>{r.settings?.wins||0}-{r.settings?.losses||0}{(r.settings?.ties||0)>0?`-${r.settings.ties}`:''}</p>
+                  <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{pts} PF · {pa} PA</p>
+                </div>
+              </div>
+            );
+          })}
+          <p style={{fontSize:'12px',color:'var(--text2)',marginTop:'10px'}}>Green = playoff positions. PF = points for, PA = points against.</p>
+        </div>
+      )}
+
+      {view==='matchups'&&(
+        <div>
+          {weekBar}
+          <div style={{display:'grid',gap:'10px'}}>
+            {mxPairs.length===0?<p style={{color:'var(--text2)',fontSize:'14px'}}>No matchup data for week {week}.</p>
+            :mxPairs.map(([a,b],i)=>{
+              const aW=(a.points||0)>(b.points||0),bW=(b.points||0)>(a.points||0);
+              return(
+                <div key={i} style={{background:'var(--bg2)',border:'0.5px solid var(--border)',borderRadius:'var(--radius-lg)',padding:'14px 16px',display:'flex',alignItems:'center',gap:'10px'}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}><Avatar avatar={a.avatar} name={a.teamName} size={26}/><span style={{fontSize:'13px',fontWeight:'500',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.teamName}</span></div>
+                    <p style={{margin:0,fontSize:'26px',fontWeight:aW?'500':'400',color:aW?'var(--text)':'var(--text2)'}}>{(a.points||0).toFixed(2)}</p>
+                  </div>
+                  <span style={{fontSize:'11px',color:'var(--text3)',flexShrink:0}}>VS</span>
+                  <div style={{flex:1,textAlign:'right'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px',justifyContent:'flex-end'}}><span style={{fontSize:'13px',fontWeight:'500',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'right'}}>{b.teamName}</span><Avatar avatar={b.avatar} name={b.teamName} size={26}/></div>
+                    <p style={{margin:0,fontSize:'26px',fontWeight:bW?'500':'400',color:bW?'var(--text)':'var(--text2)'}}>{(b.points||0).toFixed(2)}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {view==='transactions'&&(
+        <div>
+          {weekBar}
+          {txList.length===0
+            ?<p style={{color:'var(--text2)',fontSize:'14px'}}>No completed transactions in week {week}.</p>
+            :txList.map((t,i)=>{
+              const isTrade=t.type==='trade';
+              const ts=fmt(t.status_updated||t.created);
+              const tradeGroups=isTrade?buildTradeGroups(t):null;
+              const adds=Object.keys(t.adds||{});
+              const drops=Object.keys(t.drops||{});
+              const faab=t.settings?.waiver_bid;
+              const waiverPos=t.settings?.waiver_position;
+              return(
+                <div key={i} style={{padding:'20px 0',borderBottom:'0.5px solid var(--border)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'14px',flexWrap:'wrap'}}>
+                    <Chip color={isTrade?'blue':t.type==='waiver'?'amber':'green'}>{isTrade?`Trade · ${(t.roster_ids||[]).length}-team`:t.type==='waiver'?'Waiver':'Free Agent'}</Chip>
+                    {faab!=null&&<Chip color='amber'>${faab} FAAB</Chip>}
+                    {ts&&<span style={{fontSize:'12px',color:'var(--text3)'}}>{ts}</span>}
+                  </div>
+                  {isTrade&&tradeGroups&&(
+                    <div style={{display:'grid',gridTemplateColumns:`repeat(${Math.min(tradeGroups.length,3)},1fr)`,gap:'10px'}}>
+                      {tradeGroups.map((g,gi)=>(
+                        <div key={gi} style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'16px 18px',border:'0.5px solid var(--border)'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px',paddingBottom:'10px',borderBottom:'0.5px solid var(--border)'}}>
+                            <Avatar avatar={g.avatar} name={g.teamName} size={28}/>
+                            <div style={{minWidth:0}}>
+                              <p style={{margin:0,fontSize:'14px',fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.teamName}</p>
+                              <p style={{margin:0,fontSize:'11px',color:'var(--text2)'}}>receives</p>
+                            </div>
+                          </div>
+                          {g.receives.players.map(pid=>{
+                            const{name,pos,team}=resolveFull(pid);
+                            return(
+                              <div key={pid} style={{display:'flex',alignItems:'flex-start',gap:'6px',marginBottom:'6px'}}>
+                                <span style={{color:'var(--green)',fontSize:'13px',fontWeight:'700',flexShrink:0,marginTop:'1px'}}>+</span>
+                                <div>
+                                  <p style={{margin:0,fontSize:'13px',fontWeight:'500'}}>{playersLoading?<span style={{color:'var(--text3)'}}>…</span>:name}</p>
+                                  {pos&&<p style={{margin:0,fontSize:'11px',color:'var(--text2)'}}>{pos}{team?` · ${team}`:''}</p>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {g.receives.picks.map((pick,pi)=>{
+                            const drafted=resolvePickPlayer(pick);
+                            const isFuture=parseInt(pick.season)>parseInt(league?.season||'0');
+                            return(
+                            <div key={pi} style={{display:'flex',alignItems:'flex-start',gap:'6px',marginBottom:'8px'}}>
+                              <span style={{color:'var(--blue)',fontSize:'13px',fontWeight:'700',flexShrink:0,marginTop:'1px'}}>+</span>
+                              <div>
+                                <p style={{margin:0,fontSize:'13px',fontWeight:'500',color:'var(--blue)'}}>{pick.season} Round {pick.round} pick</p>
+                                {pick.originalOwnerName&&<p style={{margin:'1px 0 0',fontSize:'11px',color:'var(--text2)'}}>originally {pick.originalOwnerName}'s</p>}
+                                {drafted
+                                  ?<p style={{margin:'3px 0 0',fontSize:'12px',color:'var(--green)',fontWeight:'500',display:'flex',alignItems:'center',gap:'4px'}}>
+                                    <span style={{fontSize:'10px',opacity:.7}}>→ used on</span> {drafted.name}
+                                    {drafted.pos&&<span style={{fontSize:'11px',color:'var(--text2)',fontWeight:'400'}}>{drafted.pos}{drafted.team?` · ${drafted.team}`:''}</span>}
+                                  </p>
+                                  :<p style={{margin:'3px 0 0',fontSize:'11px',color:'var(--text3)'}}>{isFuture?'future pick — not yet used':'draft result not found'}</p>
+                                }
+                              </div>
+                            </div>
+                            );
+                          })}
+                          {g.receives.players.length===0&&g.receives.picks.length===0&&(
+                            <p style={{fontSize:'12px',color:'var(--text3)',margin:0}}>No incoming assets listed</p>
+                          )}
+                          {(g.gives.players.length>0||g.gives.picks.length>0)&&(
+                            <div style={{marginTop:'10px',paddingTop:'8px',borderTop:'0.5px solid var(--border)'}}>
+                              <p style={{margin:'0 0 6px',fontSize:'11px',color:'var(--text2)',fontWeight:'500',textTransform:'uppercase',letterSpacing:'.03em'}}>gave away</p>
+                              {g.gives.players.map(pid=>{
+                                const{name,pos,team}=resolveFull(pid);
+                                return(
+                                  <div key={pid} style={{display:'flex',alignItems:'flex-start',gap:'6px',marginBottom:'4px'}}>
+                                    <span style={{color:'var(--red)',fontWeight:'700',flexShrink:0,marginTop:'1px',fontSize:'13px'}}>−</span>
+                                    <div><p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{playersLoading?'…':name}</p>{pos&&<p style={{margin:0,fontSize:'11px',color:'var(--text3)'}}>{pos}{team?` · ${team}`:''}</p>}</div>
+                                  </div>
+                                );
+                              })}
+                              {g.gives.picks.map((pick,pi)=>{
+                                const drafted=resolvePickPlayer(pick);
+                                const isFuture=parseInt(pick.season)>parseInt(league?.season||'0');
+                                return(
+                                <div key={pi} style={{display:'flex',alignItems:'flex-start',gap:'6px',marginBottom:'4px'}}>
+                                  <span style={{color:'var(--red)',fontWeight:'700',flexShrink:0,fontSize:'13px'}}>−</span>
+                                  <div>
+                                    <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{pick.season} Round {pick.round} pick{pick.originalOwnerName?` (${pick.originalOwnerName}'s)`:''}</p>
+                                    {drafted&&<p style={{margin:'2px 0 0',fontSize:'11px',color:'var(--text3)'}}>→ used on {drafted.name}{drafted.pos?` (${drafted.pos})`:''}</p>}
+                                    {!drafted&&!isFuture&&<p style={{margin:'2px 0 0',fontSize:'11px',color:'var(--text3)'}}>draft result not found</p>}
+                                  </div>
+                                </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!isTrade&&(
+                    <div style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'16px 18px',border:'0.5px solid var(--border)'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px',paddingBottom:'10px',borderBottom:'0.5px solid var(--border)'}}>
+                        <Avatar avatar={getUser(t.roster_ids?.[0]).avatar} name={getTeamName(t.roster_ids?.[0])} size={28}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <span style={{fontSize:'14px',fontWeight:'500'}}>{getTeamName(t.roster_ids?.[0])}</span>
+                          {faab!=null&&<p style={{margin:'2px 0 0',fontSize:'12px',color:'var(--amber)'}}>Waiver bid: ${faab} FAAB</p>}
+                          {waiverPos!=null&&<p style={{margin:'2px 0 0',fontSize:'11px',color:'var(--text2)'}}>Waiver priority: #{waiverPos}</p>}
+                        </div>
+                      </div>
+                      {adds.map(pid=>{const{name,pos,team}=resolveFull(pid);return(
+                        <div key={pid} style={{display:'flex',alignItems:'flex-start',gap:'6px',marginBottom:'6px'}}>
+                          <span style={{color:'var(--green)',fontWeight:'700',flexShrink:0,marginTop:'1px'}}>+</span>
+                          <div><p style={{margin:0,fontSize:'13px',fontWeight:'500'}}>{playersLoading?'…':name}</p>{pos&&<p style={{margin:0,fontSize:'11px',color:'var(--text2)'}}>{pos}{team?` · ${team}`:''}</p>}</div>
+                        </div>
+                      );})}
+                      {drops.map(pid=>{const{name,pos,team}=resolveFull(pid);return(
+                        <div key={pid} style={{display:'flex',alignItems:'flex-start',gap:'6px',marginBottom:'4px'}}>
+                          <span style={{color:'var(--red)',fontWeight:'700',flexShrink:0,marginTop:'1px'}}>−</span>
+                          <div><p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{playersLoading?'…':name}</p>{pos&&<p style={{margin:0,fontSize:'11px',color:'var(--text3)'}}>{pos}{team?` · ${team}`:''}</p>}</div>
+                        </div>
+                      );})}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          }
+        </div>
+      )}
+
+      {view==='season'&&(
+        !seasonData
+        ?<div style={{display:'flex',alignItems:'center',gap:'10px',color:'var(--text2)',fontSize:'14px'}}><Spin/>Loading season data…</div>
+        :<div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:'10px',marginBottom:'1.5rem'}}>
+            {seasonData.highestGame&&(()=>{const{a,b}=seasonData.highestGame,w=(a.points||0)>(b.points||0)?a:b;return<div style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'12px 14px'}}><p style={{margin:'0 0 4px',fontSize:'12px',color:'var(--text2)'}}>Season high score</p><p style={{margin:'0 0 2px',fontSize:'18px',fontWeight:'500'}}>{w.points?.toFixed(1)} pts</p><p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{w.name} · Wk {seasonData.highestGame.week}</p></div>;})()}
+            {seasonData.biggestBlowout&&(()=>{const{a,b,diff}=seasonData.biggestBlowout,w=(a.points||0)>(b.points||0)?a:b;return<div style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'12px 14px'}}><p style={{margin:'0 0 4px',fontSize:'12px',color:'var(--text2)'}}>Biggest blowout</p><p style={{margin:'0 0 2px',fontSize:'18px',fontWeight:'500'}}>+{diff.toFixed(1)} pts</p><p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{w.name} · Wk {seasonData.biggestBlowout.week}</p></div>;})()}
+            {seasonData.closestGame&&(()=>{const{a,b,diff}=seasonData.closestGame;return<div style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'12px 14px'}}><p style={{margin:'0 0 4px',fontSize:'12px',color:'var(--text2)'}}>Closest game</p><p style={{margin:'0 0 2px',fontSize:'18px',fontWeight:'500'}}>{diff.toFixed(2)} margin</p><p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{a.name} vs {b.name} · Wk {seasonData.closestGame.week}</p></div>;})()}
+            <div style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'12px 14px'}}><p style={{margin:'0 0 4px',fontSize:'12px',color:'var(--text2)'}}>Weeks tracked</p><p style={{margin:'0 0 2px',fontSize:'18px',fontWeight:'500'}}>{seasonData.totalWeeks}</p><p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>regular season</p></div>
+          </div>
+          <p style={{fontSize:'12px',fontWeight:'500',margin:'0 0 10px',color:'var(--text2)',textTransform:'uppercase',letterSpacing:'.04em'}}>Team averages — ranked by scoring</p>
+          {seasonData.teams.sort((a,b)=>b.avg-a.avg).map((t,i)=>(
+            <div key={t.rid} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 0',borderBottom:'0.5px solid var(--border)'}}>
+              <span style={{width:'22px',fontSize:'13px',color:'var(--text2)',textAlign:'center',flexShrink:0}}>{i+1}</span>
+              <Avatar avatar={t.avatar} name={t.name} size={32}/>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</p>
+                <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>High {t.high.toFixed(1)} · Low {t.low.toFixed(1)} · {t.games} games</p>
+              </div>
+              <div style={{textAlign:'right',flexShrink:0}}>
+                <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500'}}>{t.avg.toFixed(1)} avg</p>
+                <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{t.total.toFixed(1)} total</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {view==='draft'&&(
+        !draftData
+        ?<div style={{display:'flex',alignItems:'center',gap:'10px',color:'var(--text2)',fontSize:'14px'}}><Spin/>Loading draft…</div>
+        :<div>
+          <p style={{fontSize:'15px',fontWeight:'500',margin:'0 0 1rem'}}>{draftData.season} Draft <span style={{fontSize:'13px',fontWeight:'400',color:'var(--text2)'}}>· {draftData.type} · {draftData.settings?.rounds} rounds · {draftData.settings?.teams} teams{draftData.status==='complete'?' · Complete':''}</span></p>
+          {!draftBoard||!draftPicks.length
+            ?<p style={{color:'var(--text2)',fontSize:'14px'}}>No picks recorded.</p>
+            :<div style={{overflowX:'auto'}}>
+              <table style={{tableLayout:'fixed',width:'100%',minWidth:`${36+draftBoard.numTeams*90}px`}}>
+                <colgroup>
+                  <col style={{width:'36px'}}/>
+                  {draftBoard.headers.map((_,i)=><col key={i} style={{width:'90px'}}/>)}
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th style={{padding:'6px 8px',fontSize:'11px'}}>Rd</th>
+                    {draftBoard.headers.map((h,i)=><th key={i} style={{padding:'6px 8px',fontSize:'11px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {draftBoard.grid.map((row,ri)=>(
+                    <tr key={ri} style={{background:ri%2===0?'transparent':'var(--bg2)'}}>
+                      <td style={{padding:'5px 8px',fontSize:'11px',color:'var(--text2)',fontWeight:'500',background:ri%2===0?'var(--bg)':'var(--bg2)'}}>{ri+1}</td>
+                      {row.map((pick,si)=>{
+                        if(!pick)return<td key={si} style={{padding:'6px 8px',color:'var(--text3)',fontSize:'12px'}}>—</td>;
+                        const m=pick.metadata||{};
+                        const name=`${m.first_name||''} ${m.last_name||''}`.trim()||pick.player_id;
+                        // Who drafted this player (the team that owned this slot)
+                        const draftedByRid=draftBoard.slotToRoster[String(si+1)]||draftBoard.slotToRoster[si+1];
+                        // Who currently holds this player on their roster
+                        const currentRid=playerCurrentRoster[String(pick.player_id)];
+                        const traded=currentRid&&String(currentRid)!==String(draftedByRid);
+                        const released=!currentRid;
+                        return(
+                          <td key={si} style={{padding:'6px 8px',verticalAlign:'top',background:traded?'var(--blue-bg)':released?'var(--red-bg)':'inherit'}}>
+                            <p style={{margin:'0 0 1px',fontWeight:'500',fontSize:'12px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</p>
+                            {m.position&&<p style={{margin:'0 0 2px',fontSize:'10px',color:'var(--text2)'}}>{m.position}{m.team?` · ${m.team}`:''}</p>}
+                            {traded&&<p style={{margin:0,fontSize:'10px',color:'var(--blue)',fontWeight:'500',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>→ {getTeamName(currentRid)}</p>}
+                            {released&&<p style={{margin:0,fontSize:'10px',color:'var(--red)'}}>released / FA</p>}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          }
+          <div style={{display:'flex',gap:'16px',marginTop:'12px',flexWrap:'wrap'}}>
+            <span style={{fontSize:'12px',color:'var(--text2)',display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:12,height:12,background:'var(--blue-bg)',border:'0.5px solid var(--blue)',borderRadius:2,display:'inline-block',flexShrink:0}}/>Traded to another team</span>
+            <span style={{fontSize:'12px',color:'var(--text2)',display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:12,height:12,background:'var(--red-bg)',border:'0.5px solid var(--red)',borderRadius:2,display:'inline-block',flexShrink:0}}/>Released / free agent</span>
+            <span style={{fontSize:'12px',color:'var(--text2)',display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:12,height:12,background:'var(--bg)',border:'0.5px solid var(--border)',borderRadius:2,display:'inline-block',flexShrink:0}}/>Still with original team</span>
+          </div>
+        </div>
+      )}
+
+      {view==='newsletter'&&(
+        <div>
+          <div style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'14px 16px',marginBottom:'1.25rem',border:'0.5px solid var(--border)'}}>
+            <p style={{fontSize:'13px',fontWeight:'500',margin:'0 0 4px'}}>Anthropic API Key</p>
+            <p style={{fontSize:'12px',color:'var(--text2)',margin:'0 0 10px',lineHeight:1.6}}>Required to generate newsletters. Get one free at <a href="https://console.anthropic.com" target="_blank" style={{color:'var(--blue)'}}>console.anthropic.com</a> → API Keys. Each newsletter costs ~$0.01 and your key is saved in your browser.</p>
+            <div style={{display:'flex',gap:'8px'}}>
+              <input type={showKey?'text':'password'} placeholder="sk-ant-..." value={apiKey} onChange={e=>saveKey(e.target.value)} style={{flex:1}}/>
+              <button onClick={()=>setShowKey(s=>!s)} style={{flexShrink:0,fontSize:'12px'}}>{showKey?'Hide':'Show'}</button>
+              <button onClick={generateNewsletter} disabled={genLoading||!apiKey.trim()} style={{flexShrink:0}}>{genLoading?'Writing…':'Generate ↗'}</button>
+            </div>
+          </div>
+          {genLoading&&<div style={{display:'flex',alignItems:'center',gap:'10px',color:'var(--text2)',fontSize:'14px',padding:'1rem 0'}}><Spin/>Writing with full league context — standings, matchups, transactions, draft…</div>}
+          {newsletter==='__NOKEY__'&&<p style={{color:'var(--amber)',fontSize:'14px'}}>Enter your Anthropic API key above to generate newsletters.</p>}
+          {newsletter&&newsletter!=='__NOKEY__'&&!genLoading&&(
+            <div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
+                <p style={{fontSize:'13px',color:'var(--text2)',margin:0}}>Week {week} newsletter — copy and paste to send to your league</p>
+                <button onClick={()=>{try{navigator.clipboard.writeText(newsletter)}catch{}}} style={{fontSize:'12px',padding:'3px 10px',height:'auto'}}>Copy text</button>
+              </div>
+              <div style={{background:'var(--bg2)',border:'0.5px solid var(--border)',borderRadius:'var(--radius-lg)',padding:'1.5rem',fontSize:'14px',lineHeight:'1.85',whiteSpace:'pre-wrap'}}>{newsletter}</div>
+            </div>
+          )}
+          {!newsletter&&!genLoading&&(
+            <div style={{padding:'2rem 0',textAlign:'center',color:'var(--text2)',fontSize:'14px',lineHeight:1.7}}>
+              <p>The newsletter pulls from your full standings, all {maxWeek} weeks of matchup results,</p>
+              <p>the last 4 weeks of transactions with player names, and your draft board.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
