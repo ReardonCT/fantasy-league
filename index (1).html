@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fantasy Football Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #ffffff; --bg2: #f5f5f4; --bg3: #eeedea;
+      --text: #1a1a18; --text2: #6b6b67; --text3: #9c9c97;
+      --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+      --radius: 8px; --radius-lg: 12px;
+      --success-bg: #eaf3de; --success-text: #3b6d11;
+      --danger-bg: #fcebeb; --danger-text: #a32d2d;
+      --info-bg: #e6f1fb; --info-text: #185fa5;
+      --warn-bg: #faeeda; --warn-text: #854f0b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a; --bg2: #252523; --bg3: #2e2e2b;
+        --text: #f0efeb; --text2: #9c9c97; --text3: #6b6b67;
+        --border: rgba(255,255,255,0.10); --border2: rgba(255,255,255,0.18);
+        --success-bg: #173404; --success-text: #c0dd97;
+        --danger-bg: #501313; --danger-text: #f7c1c1;
+        --info-bg: #042c53; --info-text: #b5d4f4;
+        --warn-bg: #412402; --warn-text: #fac775;
+      }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; padding: 1.5rem 1rem; }
+    #root { max-width: 760px; margin: 0 auto; background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 1.5rem 2rem 2.5rem; }
+    input[type="text"] { background: var(--bg2); border: 0.5px solid var(--border2); border-radius: var(--radius); color: var(--text); font-size: 14px; padding: 8px 12px; height: 36px; outline: none; font-family: inherit; width: 100%; }
+    input[type="text"]:focus { border-color: var(--text2); }
+    button { background: none; border: 0.5px solid var(--border2); border-radius: var(--radius); color: var(--text); font-size: 14px; font-family: inherit; padding: 6px 14px; height: 36px; cursor: pointer; }
+    button:hover:not(:disabled) { background: var(--bg2); }
+    button:active:not(:disabled) { transform: scale(0.98); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; border: 2px solid var(--border2); border-top-color: var(--text); border-radius: 50%; animation: spin .8s linear infinite; flex-shrink: 0; }
+    .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const {useState, useEffect, useCallback} = React;
+const BASE = 'https://api.sleeper.app/v1';
+const LEAGUE_ID = '1334357712166727680';
+const get = url => fetch(url).then(r => r.json());
+
+const Spin = ({size=14}) => <div className="spin" style={{width:size,height:size}}/>;
+
+const Avatar = ({avatar, name, size=32}) => {
+  const [err, setErr] = useState(false);
+  return (
+    <div style={{width:size,height:size,borderRadius:'50%',background:'var(--bg2)',flexShrink:0,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',fontSize:Math.floor(size*.35)+'px',color:'var(--text2)',fontWeight:'500'}}>
+      {avatar && !err
+        ? <img src={`https://sleepercdn.com/avatars/thumbs/${avatar}`} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
+        : (name||'??').slice(0,2).toUpperCase()}
+    </div>
+  );
+};
+
+const Badge = ({children, type='info'}) => (
+  <span style={{fontSize:'11px',padding:'2px 8px',borderRadius:'var(--radius)',background:`var(--${type}-bg)`,color:`var(--${type}-text)`,fontWeight:'500',flexShrink:0,whiteSpace:'nowrap'}}>
+    {children}
+  </span>
+);
+
+const StatCard = ({label, value, sub}) => (
+  <div style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'12px 14px'}}>
+    <p style={{margin:'0 0 4px',fontSize:'12px',color:'var(--text2)'}}>{label}</p>
+    <p style={{margin:'0 0 2px',fontSize:'18px',fontWeight:'500'}}>{value}</p>
+    {sub && <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{sub}</p>}
+  </div>
+);
+
+const fmtDate = ts => {
+  if (!ts) return '';
+  return new Date(ts).toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+};
+
+const fmtPick = (pick, rosterMap, userMap) => {
+  const origRoster = rosterMap[pick.previous_owner_id] || {};
+  const origUser = userMap[origRoster.owner_id] || {};
+  const origName = origUser.metadata?.team_name || origUser.display_name || 'Unknown';
+  const isSameOwner = pick.previous_owner_id === pick.owner_id;
+  return {
+    label: `${pick.season} Round ${pick.round}`,
+    original: isSameOwner ? null : `orig. ${origName}`
+  };
+};
+
+function App() {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(null);
+  const [tab, setTab] = useState('standings');
+  const [league, setLeague] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [rosters, setRosters] = useState([]);
+  const [nflState, setNflState] = useState(null);
+  const [week, setWeek] = useState(1);
+  const [maxWeek, setMaxWeek] = useState(1);
+  const [matchups, setMatchups] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [weekLoading, setWeekLoading] = useState(false);
+  const [seasonData, setSeasonData] = useState(null);
+  const [seasonLoading, setSeasonLoading] = useState(false);
+  const [players, setPlayers] = useState(null);
+  const [playersLoading, setPlayersLoading] = useState(false);
+  const [draftData, setDraftData] = useState(null);
+  const [draftPicks, setDraftPicks] = useState([]);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [newsletter, setNewsletter] = useState('');
+  const [genLoading, setGenLoading] = useState(false);
+
+  const loadWeek = useCallback(async (id, w) => {
+    setWeekLoading(true);
+    try {
+      const [mx, tx] = await Promise.all([
+        get(`${BASE}/league/${id}/matchups/${w}`),
+        get(`${BASE}/league/${id}/transactions/${w}`)
+      ]);
+      setMatchups(Array.isArray(mx) ? mx : []);
+      setTransactions(Array.isArray(tx) ? tx : []);
+    } finally { setWeekLoading(false); }
+  }, []);
+
+  const loadSeason = useCallback(async (id, max, ros, usrs) => {
+    setSeasonLoading(true);
+    const allWeeks = await Promise.all(
+      Array.from({length:max}, (_,i) => get(`${BASE}/league/${id}/matchups/${i+1}`).catch(()=>[]))
+    );
+    const userMap = {}; usrs.forEach(u => { userMap[u.user_id] = u; });
+    const rosterMap = {}; ros.forEach(r => { rosterMap[r.roster_id] = r; });
+    const teamStats = {};
+    ros.forEach(r => {
+      const u = userMap[r.owner_id] || {};
+      teamStats[r.roster_id] = {name: u.metadata?.team_name||u.display_name||'?', displayName:u.display_name||'—', avatar:u.avatar, scores:[], total:0, wins:r.settings?.wins||0, losses:r.settings?.losses||0};
+    });
+    const allMatchups = [];
+    allWeeks.forEach((wData, wi) => {
+      if (!Array.isArray(wData)) return;
+      const mxMap = {};
+      wData.forEach(m => { if (!mxMap[m.matchup_id]) mxMap[m.matchup_id]=[]; mxMap[m.matchup_id].push(m); });
+      Object.values(mxMap).filter(p=>p.length===2).forEach(([a,b]) => {
+        if (!a.points && !b.points) return;
+        const ta = teamStats[a.roster_id], tb = teamStats[b.roster_id];
+        if (ta) { ta.scores.push(a.points||0); ta.total += (a.points||0); }
+        if (tb) { tb.scores.push(b.points||0); tb.total += (b.points||0); }
+        allMatchups.push({week:wi+1, a:{...a,name:ta?.name||'?'}, b:{...b,name:tb?.name||'?'}});
+      });
+    });
+    const teams = Object.entries(teamStats).map(([rid, t]) => ({
+      rid, ...t,
+      avg: t.scores.length ? t.total/t.scores.length : 0,
+      high: t.scores.length ? Math.max(...t.scores) : 0,
+      low: t.scores.length ? Math.min(...t.scores) : 0,
+      games: t.scores.length
+    }));
+    const vm = allMatchups.filter(m => m.a.points>0||m.b.points>0);
+    const highestGame = vm.reduce((b,m) => { const h=Math.max(m.a.points||0,m.b.points||0); return h>(b?.score||0)?{...m,score:h}:b; }, null);
+    const biggestBlowout = vm.reduce((b,m) => { const d=Math.abs((m.a.points||0)-(m.b.points||0)); return d>(b?.diff||0)?{...m,diff:d}:b; }, null);
+    const closestGame = vm.reduce((b,m) => { const d=Math.abs((m.a.points||0)-(m.b.points||0)); if(!d) return b; return d<(b?.diff||Infinity)?{...m,diff:d}:b; }, null);
+    setSeasonData({teams, highestGame, biggestBlowout, closestGame, totalWeeks:max});
+    setSeasonLoading(false);
+  }, []);
+
+  const loadDraft = useCallback(async (id) => {
+    setDraftLoading(true);
+    try {
+      const drafts = await get(`${BASE}/league/${id}/drafts`);
+      if (!Array.isArray(drafts) || !drafts.length) return;
+      const latest = drafts[drafts.length - 1];
+      const [draftInfo, picks] = await Promise.all([
+        get(`${BASE}/draft/${latest.draft_id}`),
+        get(`${BASE}/draft/${latest.draft_id}/picks`)
+      ]);
+      setDraftData(draftInfo);
+      setDraftPicks(Array.isArray(picks) ? picks : []);
+    } catch(e) { console.warn('Draft load failed', e); }
+    finally { setDraftLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [lg, us, rs, ns] = await Promise.all([
+          get(`${BASE}/league/${LEAGUE_ID}`),
+          get(`${BASE}/league/${LEAGUE_ID}/users`),
+          get(`${BASE}/league/${LEAGUE_ID}/rosters`),
+          get(`${BASE}/state/nfl`)
+        ]);
+        if (!lg?.league_id) throw new Error('League not found.');
+        const w = Math.max(1, ns.week||1);
+        const [mx, tx] = await Promise.all([
+          get(`${BASE}/league/${LEAGUE_ID}/matchups/${w}`),
+          get(`${BASE}/league/${LEAGUE_ID}/transactions/${w}`)
+        ]);
+        setLeague(lg); setUsers(us); setRosters(rs); setNflState(ns);
+        setWeek(w); setMaxWeek(w);
+        setMatchups(Array.isArray(mx) ? mx : []);
+        setTransactions(Array.isArray(tx) ? tx : []);
+        setLoaded(true);
+        loadSeason(LEAGUE_ID, w, rs, us);
+        loadDraft(LEAGUE_ID);
+        setPlayersLoading(true);
+        get(`${BASE}/players/nfl`).then(p => { setPlayers(p); setPlayersLoading(false); }).catch(() => { setPlayers({}); setPlayersLoading(false); });
+      } catch(e) { setError(e.message||'Failed to load.'); }
+    };
+    load();
+  }, []);
+
+  if (error) return <div style={{padding:'2rem',textAlign:'center'}}><p style={{color:'var(--danger-text)',fontSize:'14px'}}>{error}</p></div>;
+
+  if (!loaded) return (
+    <div style={{padding:'3rem 1rem',textAlign:'center'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',color:'var(--text2)',fontSize:'14px'}}>
+        <Spin size={18}/> Loading your league…
+      </div>
+    </div>
+  );
+
+  const userMap = {}; users.forEach(u => { userMap[u.user_id] = u; });
+  const rosterMap = {}; rosters.forEach(r => { rosterMap[r.roster_id] = r; });
+
+  const getTeamName = rid => {
+    const u = userMap[(rosterMap[rid]||{}).owner_id] || {};
+    return u.metadata?.team_name || u.display_name || 'Unknown';
+  };
+
+  const sorted = rosters.map(r => {
+    const u = userMap[r.owner_id] || {};
+    return {...r, teamName: u.metadata?.team_name||u.display_name||'?', displayName: u.display_name||'—', avatar: u.avatar};
+  }).sort((a,b) => {
+    const dw = (b.settings?.wins||0)-(a.settings?.wins||0); if (dw) return dw;
+    return ((b.settings?.fpts||0)+(b.settings?.fpts_decimal||0)/100) - ((a.settings?.fpts||0)+(a.settings?.fpts_decimal||0)/100);
+  });
+
+  const mxMap = {};
+  matchups.forEach(m => { if (!mxMap[m.matchup_id]) mxMap[m.matchup_id]=[]; mxMap[m.matchup_id].push(m); });
+  const pairs = Object.values(mxMap).filter(p=>p.length===2).map(pair =>
+    pair.map(m => { const u=userMap[(rosterMap[m.roster_id]||{}).owner_id]||{}; return {...m, teamName: u.metadata?.team_name||u.display_name||'?', avatar: u.avatar}; })
+  );
+
+  const txList = transactions.filter(t => t.status==='complete').slice(0,30).map(t => ({
+    ...t,
+    teams: (t.roster_ids||[]).map(rid => { const u=userMap[(rosterMap[rid]||{}).owner_id]||{}; return u.display_name||'?'; })
+  }));
+
+  const resolvePlayer = pid => {
+    if (!players) return null;
+    const p = players[pid]; if (!p) return pid;
+    return `${p.first_name||''} ${p.last_name||''}`.trim() || pid;
+  };
+
+  const resolvePlayerFull = pid => {
+    if (!players) return {name: pid, pos:'', team:''};
+    const p = players[pid]; if (!p) return {name:pid,pos:'',team:''};
+    return {name:`${p.first_name||''} ${p.last_name||''}`.trim()||pid, pos:p.position||'', team:p.team||'FA'};
+  };
+
+  // Build trade groups: for each receiving team, what did they get?
+  const buildTradeGroups = (t) => {
+    const groups = {};
+    const ensureGroup = rid => {
+      if (!groups[rid]) {
+        const u = userMap[(rosterMap[rid]||{}).owner_id] || {};
+        groups[rid] = {teamName: u.metadata?.team_name||u.display_name||'Unknown', avatar:u.avatar, players:[], picks:[]};
+      }
+    };
+    Object.entries(t.adds||{}).forEach(([pid,rid]) => { ensureGroup(rid); groups[rid].players.push(pid); });
+    (t.draft_picks||[]).forEach(pick => {
+      ensureGroup(pick.roster_id);
+      const origRoster = rosterMap[pick.previous_owner_id] || {};
+      const origUser = userMap[origRoster.owner_id] || {};
+      const origName = origUser.metadata?.team_name||origUser.display_name||'?';
+      const isSameOrigin = pick.previous_owner_id === pick.owner_id;
+      groups[pick.roster_id].picks.push({...pick, originalOwnerName: isSameOrigin ? null : origName});
+    });
+    return Object.values(groups);
+  };
+
+  const generateNewsletter = async () => {
+    setGenLoading(true); setTab('newsletter'); setNewsletter('');
+    const standings = sorted.map((r,i) => {
+      const pts = ((r.settings?.fpts||0)+(r.settings?.fpts_decimal||0)/100).toFixed(1);
+      return `${i+1}. ${r.teamName} (${r.settings?.wins||0}-${r.settings?.losses||0}) — ${pts} pts`;
+    }).join('\n');
+    const mxSummary = pairs.map(([a,b]) => `${a.teamName} ${(a.points||0).toFixed(2)} vs ${b.teamName} ${(b.points||0).toFixed(2)}`).join('\n');
+    const txSummary = txList.slice(0,6).map(t => {
+      if (t.type==='trade') {
+        const groups = buildTradeGroups(t);
+        return `Trade: ${groups.map(g=>`${g.teamName} gets ${[...g.players.map(p=>resolvePlayer(p)||p),...g.picks.map(pk=>`${pk.season} Rd${pk.round}`)].join(', ')}`).join(' | ')}`;
+      }
+      const addNames = Object.keys(t.adds||{}).map(pid=>resolvePlayer(pid)||pid).join(', ');
+      const dropNames = Object.keys(t.drops||{}).map(pid=>resolvePlayer(pid)||pid).join(', ');
+      return `${t.teams[0]||'?'} ${t.type}: added ${addNames||'—'}${dropNames?', dropped '+dropNames:''}`;
+    }).join('\n');
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`Write a witty, trash-talky weekly newsletter for the "${league.name}" fantasy football league, week ${week}.\n\nStandings:\n${standings}\n\nWeek ${week} matchups:\n${mxSummary||'(none)'}\n\nRecent transactions:\n${txSummary||'(none)'}\n\nWrite 3-4 fun paragraphs in commissioner voice. Plain text only, no markdown.`}]})
+      });
+      const d = await res.json();
+      setNewsletter(d.content?.map(c=>c.text||'').join('')||'Error generating.');
+    } catch { setNewsletter('Could not generate newsletter.'); }
+    setGenLoading(false);
+  };
+
+  const TABS = ['standings','matchups','transactions','season','draft','newsletter'];
+  const weekOptions = Array.from({length:maxWeek}, (_,i)=>i+1);
+
+  // Draft board logic
+  const draftBoard = (() => {
+    if (!draftData || !draftPicks.length) return null;
+    const numTeams = draftData.settings?.teams || rosters.length;
+    const numRounds = draftData.settings?.rounds || 15;
+    const slotToRoster = draftData.slot_to_roster_id || {};
+    // Build column headers: slot -> team name
+    const headers = Array.from({length:numTeams}, (_,i) => {
+      const slot = String(i+1);
+      const rid = slotToRoster[slot] || slotToRoster[i+1];
+      if (!rid) return `Slot ${i+1}`;
+      return getTeamName(rid);
+    });
+    // Build grid: [round][slot] = pick
+    const grid = Array.from({length:numRounds}, () => Array(numTeams).fill(null));
+    draftPicks.forEach(pick => {
+      const r = (pick.round||1) - 1;
+      const s = (pick.draft_slot||pick.pick_no % numTeams || numTeams) - 1;
+      if (r >= 0 && r < numRounds && s >= 0 && s < numTeams) {
+        grid[r][s] = pick;
+      }
+    });
+    return {headers, grid, numTeams, numRounds};
+  })();
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'1.25rem',gap:'12px',flexWrap:'wrap'}}>
+        <div>
+          <p style={{fontSize:'22px',fontWeight:'500',margin:'0 0 4px'}}>🏈 {league.name}</p>
+          <p style={{fontSize:'13px',color:'var(--text2)',margin:0,display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+            <span>{league.season} · {rosters.length} teams · week {nflState?.week||'?'}</span>
+            {playersLoading && <span style={{display:'inline-flex',alignItems:'center',gap:'5px'}}><Spin size={11}/><span>Loading player names…</span></span>}
+            {players && !playersLoading && <span style={{color:'var(--success-text)'}}>· player names ready</span>}
+          </p>
+        </div>
+        <button onClick={generateNewsletter} disabled={genLoading}>{genLoading?'Writing…':'Generate Newsletter'}</button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:'flex',borderBottom:'0.5px solid var(--border)',marginBottom:'1.25rem',gap:'2px',flexWrap:'wrap'}}>
+        {TABS.map(t => (
+          <button key={t} onClick={()=>setTab(t)} style={{background:'none',border:'none',borderRadius:0,height:'auto',borderBottom:tab===t?'2px solid var(--text)':'2px solid transparent',padding:'6px 11px',fontSize:'13px',cursor:'pointer',marginBottom:'-1px',fontWeight:tab===t?'500':'400',color:tab===t?'var(--text)':'var(--text2)'}}>
+            {t==='season'?'Season Stats':t.charAt(0).toUpperCase()+t.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* Week picker for matchups + transactions */}
+      {(tab==='matchups'||tab==='transactions') && (
+        <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'1rem',flexWrap:'wrap'}}>
+          <span style={{fontSize:'13px',color:'var(--text2)'}}>Week</span>
+          <div style={{display:'flex',gap:'4px',flexWrap:'wrap'}}>
+            {weekOptions.map(w => (
+              <button key={w} onClick={()=>{setWeek(w);loadWeek(LEAGUE_ID,w);}} style={{padding:'3px 9px',fontSize:'12px',height:'auto',fontWeight:week===w?'500':'400',background:week===w?'var(--bg2)':'none',borderColor:week===w?'var(--border2)':'var(--border)'}}>
+                {w}
+              </button>
+            ))}
+          </div>
+          {weekLoading && <Spin/>}
+        </div>
+      )}
+
+      {/* STANDINGS */}
+      {tab==='standings' && (
+        <div>
+          {sorted.map((r,i) => {
+            const pts = ((r.settings?.fpts||0)+(r.settings?.fpts_decimal||0)/100).toFixed(1);
+            const ptsA = ((r.settings?.fpts_against||0)+(r.settings?.fpts_against_decimal||0)/100).toFixed(1);
+            const playoff = i < Math.ceil(rosters.length/2);
+            return (
+              <div key={r.roster_id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 0',borderBottom:'0.5px solid var(--border)'}}>
+                <span style={{width:'20px',fontSize:'13px',color:playoff?'var(--success-text)':'var(--text2)',textAlign:'center',flexShrink:0,fontWeight:i===0?'500':'400'}}>{i+1}</span>
+                <Avatar avatar={r.avatar} name={r.teamName} size={34}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.teamName}</p>
+                  <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{r.displayName}</p>
+                </div>
+                <div style={{textAlign:'right',flexShrink:0}}>
+                  <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500'}}>{r.settings?.wins||0}-{r.settings?.losses||0}{(r.settings?.ties||0)>0?`-${r.settings.ties}`:''}</p>
+                  <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{pts} PF · {ptsA} PA</p>
+                </div>
+              </div>
+            );
+          })}
+          <p style={{fontSize:'12px',color:'var(--text2)',marginTop:'10px'}}>Green = playoff positions (top half). PF = points for, PA = points against.</p>
+        </div>
+      )}
+
+      {/* MATCHUPS */}
+      {tab==='matchups' && (
+        <div style={{display:'grid',gap:'10px'}}>
+          {pairs.length===0 ? <p style={{color:'var(--text2)',fontSize:'14px'}}>No matchup data for week {week}.</p>
+          : pairs.map(([a,b],i) => {
+            const aW=(a.points||0)>(b.points||0), bW=(b.points||0)>(a.points||0);
+            return (
+              <div key={i} style={{background:'var(--bg2)',border:'0.5px solid var(--border)',borderRadius:'var(--radius-lg)',padding:'14px 16px',display:'flex',alignItems:'center',gap:'8px'}}>
+                <div style={{flex:1}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+                    <Avatar avatar={a.avatar} name={a.teamName} size={26}/>
+                    <span style={{fontSize:'13px',fontWeight:'500',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.teamName}</span>
+                  </div>
+                  <p style={{margin:0,fontSize:'24px',fontWeight:aW?'500':'400',color:aW?'var(--text)':'var(--text2)'}}>{(a.points||0).toFixed(2)}</p>
+                </div>
+                <span style={{fontSize:'11px',color:'var(--text3)',flexShrink:0}}>VS</span>
+                <div style={{flex:1,textAlign:'right'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px',justifyContent:'flex-end'}}>
+                    <span style={{fontSize:'13px',fontWeight:'500',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'right'}}>{b.teamName}</span>
+                    <Avatar avatar={b.avatar} name={b.teamName} size={26}/>
+                  </div>
+                  <p style={{margin:0,fontSize:'24px',fontWeight:bW?'500':'400',color:bW?'var(--text)':'var(--text2)'}}>{(b.points||0).toFixed(2)}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* TRANSACTIONS */}
+      {tab==='transactions' && (
+        <div>
+          {txList.length===0 ? <p style={{color:'var(--text2)',fontSize:'14px'}}>No completed transactions in week {week}.</p>
+          : txList.map((t,i) => {
+            const isTrade = t.type==='trade';
+            const tradeGroups = isTrade ? buildTradeGroups(t) : null;
+            const adds = Object.keys(t.adds||{});
+            const drops = Object.keys(t.drops||{});
+            const ts = fmtDate(t.status_updated || t.created);
+            return (
+              <div key={i} style={{padding:'16px 0',borderBottom:'0.5px solid var(--border)'}}>
+                {/* Header row */}
+                <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px',flexWrap:'wrap'}}>
+                  <Badge type={isTrade?'info':t.type==='waiver'?'warn':'success'}>
+                    {isTrade?'Trade':t.type==='waiver'?'Waiver':'Free Agent'}
+                  </Badge>
+                  {ts && <span style={{fontSize:'12px',color:'var(--text3)'}}>{ts}</span>}
+                </div>
+
+                {/* TRADE: two-column layout */}
+                {isTrade && tradeGroups && (
+                  <div style={{display:'grid',gridTemplateColumns:`repeat(${tradeGroups.length}, 1fr)`,gap:'12px'}}>
+                    {tradeGroups.map((group, gi) => (
+                      <div key={gi} style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'10px 12px'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px',paddingBottom:'8px',borderBottom:'0.5px solid var(--border)'}}>
+                          <Avatar avatar={group.avatar} name={group.teamName} size={24}/>
+                          <span style={{fontSize:'13px',fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{group.teamName} gets</span>
+                        </div>
+                        {group.players.length===0 && group.picks.length===0 && (
+                          <p style={{fontSize:'12px',color:'var(--text3)',margin:0}}>No assets listed</p>
+                        )}
+                        {group.players.map(pid => {
+                          const {name,pos,team} = resolvePlayerFull(pid);
+                          return (
+                            <div key={pid} style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'5px'}}>
+                              <span style={{color:'var(--success-text)',fontSize:'13px',fontWeight:'500',flexShrink:0}}>+</span>
+                              <div style={{minWidth:0}}>
+                                <span style={{fontSize:'13px',fontWeight:'500'}}>{playersLoading?<span style={{color:'var(--text3)'}}>…</span>:name}</span>
+                                {pos && <span style={{fontSize:'11px',color:'var(--text2)',marginLeft:'4px'}}>{pos}{team?` · ${team}`:''}</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {group.picks.map((pick,pi) => (
+                          <div key={pi} style={{display:'flex',alignItems:'flex-start',gap:'6px',marginBottom:'5px'}}>
+                            <span style={{color:'var(--info-text)',fontSize:'13px',fontWeight:'500',flexShrink:0}}>+</span>
+                            <div>
+                              <span style={{fontSize:'13px',fontWeight:'500',color:'var(--info-text)'}}>{pick.season} Rd {pick.round}</span>
+                              {pick.originalOwnerName && <span style={{fontSize:'11px',color:'var(--text2)',display:'block'}}>orig. {pick.originalOwnerName}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* WAIVER / FA: simple layout */}
+                {!isTrade && (
+                  <div style={{background:'var(--bg2)',borderRadius:'var(--radius)',padding:'10px 12px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px',paddingBottom:'8px',borderBottom:'0.5px solid var(--border)'}}>
+                      {(() => { const u=userMap[(rosterMap[t.roster_ids?.[0]]||{}).owner_id]||{}; const av=u.avatar; return <Avatar avatar={av} name={getTeamName(t.roster_ids?.[0])} size={24}/>; })()}
+                      <span style={{fontSize:'13px',fontWeight:'500'}}>{getTeamName(t.roster_ids?.[0])}</span>
+                    </div>
+                    {adds.map(pid => {
+                      const {name,pos,team} = resolvePlayerFull(pid);
+                      return (
+                        <div key={pid} style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'5px'}}>
+                          <span style={{color:'var(--success-text)',fontSize:'13px',fontWeight:'500',flexShrink:0,width:'10px'}}>+</span>
+                          <span style={{fontSize:'13px',fontWeight:'500'}}>{playersLoading?'…':name}</span>
+                          {pos && <span style={{fontSize:'11px',color:'var(--text2)'}}>{pos}{team?` · ${team}`:''}</span>}
+                        </div>
+                      );
+                    })}
+                    {drops.map(pid => {
+                      const {name,pos,team} = resolvePlayerFull(pid);
+                      return (
+                        <div key={pid} style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'5px'}}>
+                          <span style={{color:'var(--danger-text)',fontSize:'13px',fontWeight:'500',flexShrink:0,width:'10px'}}>−</span>
+                          <span style={{fontSize:'13px',color:'var(--text2)'}}>{playersLoading?'…':name}</span>
+                          {pos && <span style={{fontSize:'11px',color:'var(--text3)'}}>{pos}{team?` · ${team}`:''}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* SEASON STATS */}
+      {tab==='season' && (
+        seasonLoading
+        ? <div style={{display:'flex',alignItems:'center',gap:'10px',color:'var(--text2)',fontSize:'14px',padding:'1rem 0'}}><Spin/>Loading all {maxWeek} weeks…</div>
+        : !seasonData ? <p style={{color:'var(--text2)',fontSize:'14px'}}>Season data unavailable.</p>
+        : <div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'10px',marginBottom:'1.5rem'}}>
+              {seasonData.highestGame && (() => {
+                const {a,b}=seasonData.highestGame, w=(a.points||0)>(b.points||0)?a:b;
+                return <StatCard label="Season high score" value={`${w.points?.toFixed(1)} pts`} sub={`${w.name} · Wk ${seasonData.highestGame.week}`}/>;
+              })()}
+              {seasonData.biggestBlowout && (() => {
+                const {a,b,diff}=seasonData.biggestBlowout, w=(a.points||0)>(b.points||0)?a:b;
+                return <StatCard label="Biggest blowout" value={`+${diff.toFixed(1)} pts`} sub={`${w.name} · Wk ${seasonData.biggestBlowout.week}`}/>;
+              })()}
+              {seasonData.closestGame && (() => {
+                const {a,b,diff}=seasonData.closestGame;
+                return <StatCard label="Closest game" value={`${diff.toFixed(2)} margin`} sub={`${a.name} vs ${b.name} · Wk ${seasonData.closestGame.week}`}/>;
+              })()}
+              <StatCard label="Weeks tracked" value={seasonData.totalWeeks} sub="regular season"/>
+            </div>
+            <p style={{fontSize:'12px',fontWeight:'500',margin:'0 0 10px',color:'var(--text2)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Team averages — ranked by scoring</p>
+            {seasonData.teams.sort((a,b)=>b.avg-a.avg).map((t,i) => (
+              <div key={t.rid} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 0',borderBottom:'0.5px solid var(--border)'}}>
+                <span style={{width:'20px',fontSize:'13px',color:'var(--text2)',textAlign:'center',flexShrink:0}}>{i+1}</span>
+                <Avatar avatar={t.avatar} name={t.name} size={32}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</p>
+                  <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>High {t.high.toFixed(1)} · Low {t.low.toFixed(1)} · {t.games} games</p>
+                </div>
+                <div style={{textAlign:'right',flexShrink:0}}>
+                  <p style={{margin:'0 0 2px',fontSize:'14px',fontWeight:'500'}}>{t.avg.toFixed(1)} avg</p>
+                  <p style={{margin:0,fontSize:'12px',color:'var(--text2)'}}>{t.total.toFixed(1)} total</p>
+                </div>
+              </div>
+            ))}
+          </div>
+      )}
+
+      {/* DRAFT */}
+      {tab==='draft' && (
+        draftLoading
+        ? <div style={{display:'flex',alignItems:'center',gap:'10px',color:'var(--text2)',fontSize:'14px',padding:'1rem 0'}}><Spin/>Loading draft data…</div>
+        : !draftData ? <p style={{color:'var(--text2)',fontSize:'14px'}}>No draft found for this league.</p>
+        : <div>
+            <div style={{marginBottom:'1.25rem'}}>
+              <p style={{fontSize:'16px',fontWeight:'500',margin:'0 0 4px'}}>{draftData.season} Draft</p>
+              <p style={{fontSize:'13px',color:'var(--text2)',margin:0}}>
+                {draftData.type==='snake'?'Snake':'Auction'} draft · {draftData.settings?.rounds||'?'} rounds · {draftData.settings?.teams||'?'} teams
+                {draftData.status==='complete' && <span style={{marginLeft:'8px',color:'var(--success-text)'}}>· Complete</span>}
+              </p>
+            </div>
+
+            {!draftBoard || !draftPicks.length
+              ? <p style={{color:'var(--text2)',fontSize:'14px'}}>No picks recorded yet.</p>
+              : <div className="scroll-x">
+                  <table style={{borderCollapse:'collapse',minWidth:'100%',fontSize:'12px'}}>
+                    <thead>
+                      <tr>
+                        <th style={{padding:'6px 8px',textAlign:'left',color:'var(--text2)',fontWeight:'500',fontSize:'11px',whiteSpace:'nowrap',borderBottom:'0.5px solid var(--border)',position:'sticky',left:0,background:'var(--bg)'}}>Rd</th>
+                        {draftBoard.headers.map((h,i) => (
+                          <th key={i} style={{padding:'6px 8px',textAlign:'left',color:'var(--text2)',fontWeight:'500',fontSize:'11px',whiteSpace:'nowrap',borderBottom:'0.5px solid var(--border)',minWidth:'100px'}}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {draftBoard.grid.map((row, ri) => (
+                        <tr key={ri} style={{background: ri%2===0?'transparent':'var(--bg2)'}}>
+                          <td style={{padding:'6px 8px',color:'var(--text2)',fontWeight:'500',fontSize:'11px',borderBottom:'0.5px solid var(--border)',position:'sticky',left:0,background:ri%2===0?'var(--bg)':'var(--bg2)'}}>{ri+1}</td>
+                          {row.map((pick, si) => {
+                            if (!pick) return <td key={si} style={{padding:'6px 8px',borderBottom:'0.5px solid var(--border)',color:'var(--text3)'}}>—</td>;
+                            const meta = pick.metadata || {};
+                            const name = `${meta.first_name||''} ${meta.last_name||''}`.trim() || pick.player_id;
+                            const pos = meta.position || '';
+                            const team = meta.team || '';
+                            return (
+                              <td key={si} style={{padding:'6px 8px',borderBottom:'0.5px solid var(--border)',verticalAlign:'top'}}>
+                                <p style={{margin:'0 0 2px',fontWeight:'500',color:'var(--text)',whiteSpace:'nowrap'}}>{name}</p>
+                                {pos && <p style={{margin:0,fontSize:'11px',color:'var(--text2)'}}>{pos}{team?` · ${team}`:''}</p>}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+            }
+          </div>
+      )}
+
+      {/* NEWSLETTER */}
+      {tab==='newsletter' && (
+        <div>
+          {genLoading && <div style={{display:'flex',alignItems:'center',gap:'10px',color:'var(--text2)',fontSize:'14px',padding:'1rem 0'}}><Spin/>Writing your newsletter…</div>}
+          {newsletter && !genLoading && (
+            <div style={{background:'var(--bg2)',border:'0.5px solid var(--border)',borderRadius:'var(--radius-lg)',padding:'1.25rem',fontSize:'14px',lineHeight:'1.8',whiteSpace:'pre-wrap'}}>{newsletter}</div>
+          )}
+          {!newsletter && !genLoading && (
+            <div style={{padding:'2rem 0',textAlign:'center'}}>
+              <p style={{fontSize:'14px',color:'var(--text2)',marginBottom:'12px'}}>Generate an AI-written weekly recap with real player names and scores.</p>
+              <button onClick={generateNewsletter}>Generate Newsletter</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
